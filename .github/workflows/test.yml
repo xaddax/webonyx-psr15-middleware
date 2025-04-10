@@ -38,6 +38,6 @@ jobs:
         uses: codecov/codecov-action@v5
         if: matrix.php-version == '8.4'
         with:
-          token: ${{ secrets.CODECOV_ORG_TOKEN }}
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.xml
           fail_ci_if_error: true

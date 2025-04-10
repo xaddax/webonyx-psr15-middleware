@@ -2,7 +2,7 @@
 
 A framework-agnostic PSR-15 middleware for handling GraphQL requests using webonyx/graphql-php.
 
-[![codecov](https://codecov.io/gh/xaddax/webonyx-psr15-middleware/graph/badge.svg)](https://codecov.io/gh/xaddax/webonyx-psr15-middleware)
+[![codecov](https://codecov.io/gh/xaddax/webonyx-psr15-middleware/graph/badge.svg?token=LVSGZ7FFPR)](https://codecov.io/gh/xaddax/webonyx-psr15-middleware)
 
 ## Features
 
