@@ -154,4 +154,94 @@ class GeneratedSchemaFactoryTest extends TestCase
             unlink($schemaFile);
         }
     }
+
+    public function testCreateSchemaWithoutCache(): void
+    {
+        $this->config = $this->createMock(SchemaConfigurationInterface::class);
+        $this->config->expects($this->any())
+            ->method('isCacheEnabled')
+            ->willReturn(false);
+        $this->config->expects($this->any())
+            ->method('getSchemaDirectories')
+            ->willReturn([self::SCHEMA_DIR]);
+        $this->config->expects($this->any())
+            ->method('getCacheDirectory')
+            ->willReturn(self::CACHE_DIR);
+        $this->config->expects($this->any())
+            ->method('getDirectoryChangeFilename')
+            ->willReturn('schema-directory-cache.php');
+        $this->config->expects($this->any())
+            ->method('getSchemaFilename')
+            ->willReturn('schema-cache.php');
+        $this->config->expects($this->any())
+            ->method('getParserOptions')
+            ->willReturn([]);
+
+        $factory = new GeneratedSchemaFactory($this->config);
+        $schema = $factory->createSchema();
+        $this->assertInstanceOf(Schema::class, $schema);
+
+        $cacheFile = self::CACHE_DIR . '/schema-cache.php';
+        $this->assertFileDoesNotExist($cacheFile);
+    }
+
+    public function testThrowsExceptionOnInvalidSchema(): void
+    {
+        $schemaFile = self::SCHEMA_DIR . '/invalid.graphql';
+        file_put_contents($schemaFile, 'type InvalidType Query');
+
+        try {
+            $this->expectException(\GraphQL\Error\SyntaxError::class);
+            $this->factory->createSchema();
+        } finally {
+            unlink($schemaFile);
+        }
+    }
+
+    public function testHandlesUnwritableCacheDirectory(): void
+    {
+        $unwritableDir = self::CACHE_DIR . '/unwritable';
+        if (!is_dir($unwritableDir)) {
+            mkdir($unwritableDir, 0777, true);
+        }
+        chmod($unwritableDir, 0444);
+
+        try {
+            $this->config = $this->createMock(SchemaConfigurationInterface::class);
+            $this->config->expects($this->any())
+                ->method('isCacheEnabled')
+                ->willReturn(true);
+            $this->config->expects($this->any())
+                ->method('getSchemaDirectories')
+                ->willReturn([self::SCHEMA_DIR]);
+            $this->config->expects($this->any())
+                ->method('getCacheDirectory')
+                ->willReturn($unwritableDir);
+            $this->config->expects($this->any())
+                ->method('getDirectoryChangeFilename')
+                ->willReturn('schema-directory-cache.php');
+            $this->config->expects($this->any())
+                ->method('getSchemaFilename')
+                ->willReturn('schema-cache.php');
+            $this->config->expects($this->any())
+                ->method('getParserOptions')
+                ->willReturn([]);
+
+            $factory = new GeneratedSchemaFactory($this->config);
+            $schema = $factory->createSchema();
+            $this->assertInstanceOf(Schema::class, $schema);
+        } finally {
+            chmod($unwritableDir, 0777);
+            rmdir($unwritableDir);
+        }
+    }
+
+    public function testHandlesEmptyDirectoryCache(): void
+    {
+        $dirCacheFile = self::CACHE_DIR . '/schema-directory-cache.php';
+        file_put_contents($dirCacheFile, "<?php\nreturn ['test' => 123];\n");
+
+        $schema = $this->factory->createSchema();
+        $this->assertInstanceOf(Schema::class, $schema);
+    }
 }

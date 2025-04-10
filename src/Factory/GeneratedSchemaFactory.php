@@ -83,8 +83,10 @@ class GeneratedSchemaFactory
             return $this->readSourceASTFromCache();
         }
         $source = $this->buildSourceAST();
-        $this->writeSourceASTToCache($source);
-        $this->writeDirectoryChangeCache();
+        if ($this->cacheEnabled) {
+            $this->writeSourceASTToCache($source);
+            $this->writeDirectoryChangeCache();
+        }
 
         return $source;
     }
@@ -108,12 +110,12 @@ class GeneratedSchemaFactory
     private function writeDirectoryChangeCache(): void
     {
         $content = "<?php\nreturn " . var_export($this->schemaFiles, true) . ";\n";
-        file_put_contents($this->directoryChangeCacheFile, $content);
+        @file_put_contents($this->directoryChangeCacheFile, $content);
     }
 
     private function writeSourceASTToCache(DocumentNode $source): void
     {
-        file_put_contents($this->schemaCacheFile, "<?php\nreturn " . var_export(AST::toArray($source), true) . ";\n");
+        @file_put_contents($this->schemaCacheFile, "<?php\nreturn " . var_export(AST::toArray($source), true) . ";\n");
     }
 
     private function scanDirectories(array $directories): void

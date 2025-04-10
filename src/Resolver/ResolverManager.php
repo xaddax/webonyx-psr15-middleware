@@ -10,14 +10,11 @@ use GraphQL\Type\Definition\ResolveInfo;
 
 class ResolverManager
 {
-    /** @var callable|null */
-    private readonly mixed $fallbackResolver;
-
     public function __construct(
         private readonly ResolverFactory $resolverFactory,
-        ?callable $fallbackResolver = null
+        /** @var callable|null */
+        private readonly mixed $fallbackResolver = null,
     ) {
-        $this->fallbackResolver = $fallbackResolver;
     }
 
     /**
