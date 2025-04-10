@@ -11,6 +11,15 @@ A framework-agnostic PSR-15 middleware for handling GraphQL requests using webon
 - Schema caching support
 - Request preprocessing capabilities
 - Flexible response handling
+- Operation-specific resolvers with dependency injection support
+- Resolver documentation
+
+## Documentation
+
+- [Configuration](docs/configuration.md)
+- [Request Preprocessing](docs/request-preprocessing.md)
+- [Response Handling](docs/response-handling.md)
+- [Resolvers](docs/resolvers.md)
 
 ## Installation
 

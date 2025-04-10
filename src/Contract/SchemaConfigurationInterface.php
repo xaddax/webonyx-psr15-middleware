@@ -36,4 +36,10 @@ interface SchemaConfigurationInterface
      * Get the filename for schema cache
      */
     public function getSchemaFilename(): string;
+
+    /**
+     * Get resolver configuration
+     * @return array{namespace?: string, fallback_resolver?: callable}
+     */
+    public function getResolverConfig(): array;
 }

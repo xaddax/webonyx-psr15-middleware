@@ -25,6 +25,12 @@ class DefaultConfigurationTest extends TestCase
                 'directories' => ['/path/to/schema'],
                 'parser_options' => ['option1' => 'value1'],
             ],
+            'resolver' => [
+                'namespace' => 'Custom\\Resolver',
+                'fallback_resolver' => function ($source, $args, $context, $info) {
+                    return null;
+                }
+            ],
         ];
 
         $this->config = new DefaultConfiguration($this->testConfig);
@@ -76,5 +82,23 @@ class DefaultConfigurationTest extends TestCase
 
         $configWithoutFilename = new DefaultConfiguration([]);
         $this->assertEquals('schema-cache.php', $configWithoutFilename->getSchemaFilename());
+    }
+
+    public function testGetResolverConfig(): void
+    {
+        $resolverConfig = $this->config->getResolverConfig();
+        $this->assertNotEmpty($resolverConfig);
+        $this->assertTrue(array_key_exists('namespace', $resolverConfig));
+        $this->assertTrue(array_key_exists('fallback_resolver', $resolverConfig));
+
+        if (array_key_exists('namespace', $resolverConfig)) {
+            $this->assertEquals('Custom\Resolver', $resolverConfig['namespace']);
+        }
+        if (array_key_exists('fallback_resolver', $resolverConfig)) {
+            $this->assertIsCallable($resolverConfig['fallback_resolver']);
+        }
+
+        $configWithoutResolver = new DefaultConfiguration([]);
+        $this->assertEquals([], $configWithoutResolver->getResolverConfig());
     }
 }

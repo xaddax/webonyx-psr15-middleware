@@ -43,10 +43,14 @@
   },
   "autoload-dev": {
     "psr-4": {
+      "GraphQL\\Middleware\\Test\\": "tests",
       "Test\\Fixture\\": "tests/Fixture/src",
       "Test\\Integration\\": "tests/integration",
       "Test\\Unit\\": "tests/unit"
-    }
+    },
+    "files": [
+      "tests/functions.php"
+    ]
   },
   "scripts": {
     "check": [

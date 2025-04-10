@@ -87,4 +87,64 @@ class GeneratedSchemaFactoryTest extends TestCase
         // Cache file should not have been modified
         $this->assertEquals($firstMTime, filemtime($cacheFile));
     }
+
+    public function testHandlesDirectoryChanges(): void
+    {
+        // Create schema to generate cache
+        $this->factory->createSchema();
+
+        // Get cache file modification time
+        $cacheFile = self::CACHE_DIR . '/schema-cache.php';
+        $firstMTime = filemtime($cacheFile);
+
+        // Wait a second to ensure different modification time
+        sleep(1);
+
+        // Create a new schema file
+        $newSchemaFile = self::SCHEMA_DIR . '/additional.graphql';
+        file_put_contents($newSchemaFile, 'type Additional { id: ID! }');
+
+        try {
+            // Create schema again
+            $this->factory->createSchema();
+
+            // Cache file should have been modified
+            $this->assertGreaterThan($firstMTime, filemtime($cacheFile));
+        } finally {
+            unlink($newSchemaFile);
+        }
+    }
+
+    public function testHandlesInvalidDirectory(): void
+    {
+        // Create a temporary schema file in test directory
+        $schemaFile = self::SCHEMA_DIR . '/test.graphql';
+        file_put_contents($schemaFile, 'type TestQuery { test: String }');
+
+        try {
+            $this->config = $this->createMock(SchemaConfigurationInterface::class);
+            $this->config->expects($this->any())->method('isCacheEnabled')->willReturn(true);
+            $this->config->expects($this->any())
+                ->method('getSchemaDirectories')
+                ->willReturn(['/nonexistent', self::SCHEMA_DIR]);
+            $this->config->expects($this->any())
+                ->method('getCacheDirectory')
+                ->willReturn(self::CACHE_DIR);
+            $this->config->expects($this->any())
+                ->method('getDirectoryChangeFilename')
+                ->willReturn('schema-directory-cache.php');
+            $this->config->expects($this->any())
+                ->method('getSchemaFilename')
+                ->willReturn('schema-cache.php');
+            $this->config->expects($this->any())
+                ->method('getParserOptions')
+                ->willReturn([]);
+
+            $factory = new GeneratedSchemaFactory($this->config);
+            $schema = $factory->createSchema();
+            $this->assertInstanceOf(Schema::class, $schema);
+        } finally {
+            unlink($schemaFile);
+        }
+    }
 }

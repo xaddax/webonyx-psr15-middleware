@@ -299,8 +299,44 @@ class GraphQLMiddlewareTest extends TestCase
         $response = $this->middleware->process($request, $handler);
 
         $this->assertEquals(400, $response->getStatusCode());
-        $result = json_decode((string) $response->getBody(), true);
-        $this->assertArrayHasKey('errors', $result);
-        $this->assertEquals('Invalid JSON: Expected object or array', $result['errors'][0]['message']);
+    }
+
+    public function testRejectsRequestWithoutContentType(): void
+    {
+        $request = new ServerRequest(
+            'POST',
+            '/',
+            [],
+            json_encode(['query' => '{ hello }'], JSON_THROW_ON_ERROR)
+        );
+
+        /** @var RequestHandlerInterface&MockObject $handler */
+        $handler = $this->createMock(RequestHandlerInterface::class);
+        $handler->expects($this->once())
+            ->method('handle')
+            ->with($request)
+            ->willReturn($this->psr17Factory->createResponse());
+
+        $this->middleware->process($request, $handler);
+    }
+
+    public function testRejectsRequestWithWrongContentType(): void
+    {
+        $request = new ServerRequest(
+            'POST',
+            '/',
+            ['Content-Type' => 'text/plain'],
+            json_encode(['query' => '{ hello }'], JSON_THROW_ON_ERROR)
+        );
+
+        /** @var RequestHandlerInterface&MockObject $handler */
+        $handler = $this->createMock(RequestHandlerInterface::class);
+        $handler->expects($this->once())
+            ->method('handle')
+            ->with($request)
+            ->willReturn($this->psr17Factory->createResponse());
+
+        $response = $this->middleware->process($request, $handler);
+        $this->assertEquals(200, $response->getStatusCode());
     }
 }

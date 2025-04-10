@@ -42,4 +42,9 @@ final class DefaultConfiguration implements SchemaConfigurationInterface
     {
         return $this->config['cache']['schema_filename'] ?? 'schema-cache.php';
     }
+
+    public function getResolverConfig(): array
+    {
+        return $this->config['resolver'] ?? [];
+    }
 }
