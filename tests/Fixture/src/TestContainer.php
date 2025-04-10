@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Test\Fixture;
@@ -9,19 +10,20 @@ final class TestContainer implements ContainerInterface
 {
     public function __construct(
         public array $values = [],
-    ) {}
+    ) {
+    }
 
     public function get($id)
     {
         return $this->values[$id];
     }
 
-    public function has($id): bool
+    public function has(string $id): bool
     {
         return isset($this->values[$id]);
     }
 
-    public function set($id, $value): TestContainer
+    public function set(string $id, mixed $value): self
     {
         $this->values[$id] = $value;
 

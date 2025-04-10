@@ -1,27 +1,39 @@
 <?php
+
 declare(strict_types=1);
 
-namespace Zestic\GraphQL\Middleware\Factory;
+namespace GraphQL\Middleware\Factory;
 
 use GraphQL\Server\ServerConfig;
-use Psr\Container\ContainerInterface;
-use Zestic\GraphQL\Middleware\GraphQLMiddleware;
-use Zestic\GraphQL\Middleware\RequestPreprocessorInterface;
+use Psr\Http\Message\ResponseFactoryInterface;
+use Psr\Http\Message\StreamFactoryInterface;
+use GraphQL\Middleware\Contract\ResponseFactoryInterface as GraphQLResponseFactoryInterface;
+use GraphQL\Middleware\GraphQLMiddleware;
+use GraphQL\Middleware\RequestPreprocessorInterface;
 
 final class GraphQLMiddlewareFactory
 {
-    public function __invoke(ContainerInterface $container): GraphQLMiddleware
-    {
-        $containerConfig = $container->get('config');
-        $config = $containerConfig['graphQL']['middleware'];
-        $serverConfig = $container->get(ServerConfig::class);
-        $preprocessor = $this->getPreprocessor($container, $config);
-
-        return new GraphQLMiddleware($serverConfig, $config['allowedHeaders'], $preprocessor);
+    public function __construct(
+        private readonly ServerConfig $serverConfig,
+        private readonly ResponseFactoryInterface $responseFactory,
+        private readonly StreamFactoryInterface $streamFactory,
+        private readonly array $allowedHeaders = ['application/json', 'application/graphql'],
+        private readonly ?RequestPreprocessorInterface $requestPreprocessor = null,
+    ) {
     }
 
-    private function getPreprocessor(ContainerInterface $container, array $config): ?RequestPreprocessorInterface
+    public function createMiddleware(): GraphQLMiddleware
     {
-        return isset($config['preprocessor']) ? $container->get($config['preprocessor']) : null;
+        $responseFactory = new DefaultResponseFactory(
+            $this->responseFactory,
+            $this->streamFactory
+        );
+
+        return new GraphQLMiddleware(
+            $this->serverConfig,
+            $responseFactory,
+            $this->allowedHeaders,
+            $this->requestPreprocessor
+        );
     }
 }

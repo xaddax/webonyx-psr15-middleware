@@ -1,8 +1,35 @@
-.DS_STORE
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE files
 .idea/
-bin/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# PHP files
 composer.phar
 composer.lock
-.phpunit.result.cache
-tests/_support/_generated
 vendor/
+
+# PHPUnit files
+.phpunit.result.cache
+.phpunit.cache
+tests/_support/_generated
+
+# Coverage reports
+coverage/
+coverage.xml
+clover.xml
+
+# Cache and logs
+bin/
+cache/
+logs/
+*.log
+
+# Environment files
+.env
+.env.*
+!.env.example

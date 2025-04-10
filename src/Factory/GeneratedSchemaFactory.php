@@ -1,7 +1,8 @@
 <?php
+
 declare(strict_types=1);
 
-namespace Zestic\GraphQL\Middleware\Factory;
+namespace GraphQL\Middleware\Factory;
 
 use GraphQL\Language\AST\DocumentNode;
 use GraphQL\Language\AST\Node;
@@ -9,8 +10,7 @@ use GraphQL\Language\Parser;
 use GraphQL\Type\Schema;
 use GraphQL\Utils\BuildSchema;
 use GraphQL\Utils\AST;
-use Laminas\ConfigAggregator\ConfigAggregator;
-use Psr\Container\ContainerInterface;
+use GraphQL\Middleware\Contract\SchemaConfigurationInterface;
 
 class GeneratedSchemaFactory
 {
@@ -19,25 +19,26 @@ class GeneratedSchemaFactory
     private array $parserOptions;
     private string $schemaCacheFile;
     private array $schemaDirectories;
-    private array $schemaFiles;
+    private array $schemaFiles = [];
 
-    public function __invoke(ContainerInterface $container): Schema
+    public function __construct(
+        private readonly SchemaConfigurationInterface $config
+    ) {
+        $this->cacheEnabled = $this->config->isCacheEnabled();
+        $this->schemaDirectories = $this->config->getSchemaDirectories();
+        $cacheDirectory = $this->config->getCacheDirectory();
+        $this->directoryChangeCacheFile = $cacheDirectory . '/' . $this->config->getDirectoryChangeFilename();
+        $this->schemaCacheFile = $cacheDirectory . '/' . $this->config->getSchemaFilename();
+        $this->parserOptions = $this->config->getParserOptions();
+    }
+
+    public function createSchema(): Schema
     {
-        $containerConfig = $container->get('config');
-        $config = $containerConfig['graphQL']['generatedSchema'];
-        $cacheConfig = $config['cache'] ?? [];
-        $alwaysEnabled = $cacheConfig['alwaysEnabled'] ?? false;
-        $systemEnabled = $containerConfig[ConfigAggregator::ENABLE_CACHE ] ?? false;
-        $this->cacheEnabled = $alwaysEnabled || $systemEnabled;
-        $this->schemaDirectories = $config['schemaDirectories'];
-        $cacheDirectory = $cacheConfig['directory'] ?? getcwd() . '/' . $containerConfig['cache_directory'] . '/graphql';
-        $directoryChangeFilename = $cacheConfig['directoryChangeFilename'] ?? 'schema-directory-cache.php';
-        $this->directoryChangeCacheFile = $cacheDirectory . '/' . $directoryChangeFilename;
-        $schemaFilename = $cacheConfig['schemaFilename'] ?? 'schema-cache.php';
-        $this->schemaCacheFile = $cacheDirectory . '/' . $schemaFilename;
-        $this->parserOptions = $config['parserOptions']?? [];
-
-        return BuildSchema::build($this->getSourceAST());
+        $source = $this->getSourceAST();
+        if (!$source instanceof DocumentNode) {
+            throw new \RuntimeException('Invalid source type');
+        }
+        return BuildSchema::build($source);
     }
 
     private function isCacheValid(): bool
@@ -67,9 +68,9 @@ class GeneratedSchemaFactory
 
     private function buildSourceAST(): DocumentNode
     {
-       $source = $this->readGraphQLFiles();
+        $source = $this->readGraphQLFiles();
 
-       return Parser::parse($source, $this->parserOptions);
+        return Parser::parse($source, $this->parserOptions);
     }
 
     private function getSourceAST(): Node
@@ -106,7 +107,8 @@ class GeneratedSchemaFactory
 
     private function writeDirectoryChangeCache(): void
     {
-        file_put_contents($this->directoryChangeCacheFile, "<?php\nreturn " . var_export($this->schemaFiles, true) . ";\n");
+        $content = "<?php\nreturn " . var_export($this->schemaFiles, true) . ";\n";
+        file_put_contents($this->directoryChangeCacheFile, $content);
     }
 
     private function writeSourceASTToCache(DocumentNode $source): void
@@ -118,25 +120,61 @@ class GeneratedSchemaFactory
     {
         $subDirectories = [];
         foreach ($directories as $directory) {
-            if (is_dir($directory)) {
-                if ($dh = opendir($directory)) {
-                    while (($file = readdir($dh)) !== false) {
-                        $filePath = $directory . '/' . $file;
-                        $info = pathinfo($filePath);
-                        if (isset($info['extension']) && $info['extension'] === 'graphql') {
-                            $key = realpath($filePath);
-                            $this->schemaFiles[$key] = filemtime($key);
-                        };
-                        if ($info['basename'] === $info['filename']) {
-                            $subDirectories[] = $filePath;
-                        }
-                    }
-                    closedir($dh);
-                }
+            if (!is_dir($directory)) {
+                continue;
             }
+
+            $this->scanDirectory($directory, $subDirectories);
         }
+
         if (!empty($subDirectories)) {
             $this->scanDirectories($subDirectories);
+        }
+    }
+
+    private function scanDirectory(string $directory, array &$subDirectories): void
+    {
+        $dh = opendir($directory);
+        if ($dh === false) {
+            return;
+        }
+
+        try {
+            while (($file = readdir($dh)) !== false) {
+                $filePath = $directory . '/' . $file;
+                $info = pathinfo($filePath);
+
+                $this->processGraphQLFile($filePath, $info);
+                $this->collectSubdirectory($filePath, $info, $subDirectories);
+            }
+        } finally {
+            closedir($dh);
+        }
+    }
+
+    private function processGraphQLFile(string $filePath, array $info): void
+    {
+        if (!isset($info['extension']) || $info['extension'] !== 'graphql') {
+            return;
+        }
+
+        $key = realpath($filePath);
+        if ($key === false) {
+            throw new \RuntimeException(sprintf('Could not resolve real path for: %s', $filePath));
+        }
+
+        $lastModified = @filemtime($key);
+        if ($lastModified === false) {
+            throw new \RuntimeException(sprintf('Could not get modification time of file: %s', $key));
+        }
+
+        $this->schemaFiles[$key] = $lastModified;
+    }
+
+    private function collectSubdirectory(string $filePath, array $info, array &$subDirectories): void
+    {
+        if ($info['basename'] === $info['filename']) {
+            $subDirectories[] = $filePath;
         }
     }
 }

@@ -1,53 +1,72 @@
 <?php
+
 declare(strict_types=1);
 
-namespace Zestic\GraphQL\Middleware;
+namespace GraphQL\Middleware;
 
 use GraphQL\Executor\ExecutionResult;
 use GraphQL\Server\ServerConfig;
 use GraphQL\Server\StandardServer;
-use Laminas\Diactoros\Response\JsonResponse;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
+use GraphQL\Middleware\Contract\ResponseFactoryInterface;
 
 final class GraphQLMiddleware implements MiddlewareInterface
 {
     public function __construct(
         private readonly ServerConfig $serverConfig,
+        private readonly ResponseFactoryInterface $responseFactory,
         private readonly array $allowedHeaders = [],
         private readonly ?RequestPreprocessorInterface $requestPreprocessor = null,
-    ) {}
+    ) {
+    }
 
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        if (!$this->hasGraphQLHeader($request)) {
+        if (!$this->isGraphQLRequest($request)) {
             return $handler->handle($request);
         }
 
         if (empty($request->getParsedBody())) {
             $json = (string) $request->getBody();
-            $request = $request->withParsedBody(json_decode($json, true));
+            $data = json_decode($json, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return $this->responseFactory->createErrorResponse([
+                    ['message' => 'Invalid JSON: ' . json_last_error_msg()]
+                ], 400);
+            }
+
+            if (!is_array($data)) {
+                return $this->responseFactory->createErrorResponse([
+                    ['message' => 'Invalid JSON: Expected object or array']
+                ], 400);
+            }
+
+            $request = $request->withParsedBody($data);
         }
 
         if ($this->requestPreprocessor) {
             try {
                 $request = $this->requestPreprocessor->process($request);
             } catch (\Exception $exception) {
-                return new JsonResponse([
-                    'errors' => [
-                        'message' => $exception->getMessage(),
-                    ],
+                return $this->responseFactory->createErrorResponse([
+                    'message' => $exception->getMessage(),
                 ], 401);
             }
         }
 
         $result = $this->executeRequest($request);
 
-        return new JsonResponse($result);
+        return $this->responseFactory->createResponse($result->toArray());
     }
 
+    /**
+     * @return ExecutionResult
+     * @throws \Exception
+     */
     private function executeRequest(ServerRequestInterface $request): ExecutionResult
     {
         $context = $this->serverConfig->getContext();
@@ -55,10 +74,13 @@ final class GraphQLMiddleware implements MiddlewareInterface
             $context->setRequest($request);
         }
 
-        return (new StandardServer($this->serverConfig))->executePsrRequest($request);
+        /** @var ExecutionResult $result */
+        $result = (new StandardServer($this->serverConfig))->executePsrRequest($request);
+
+        return $result;
     }
 
-    private function hasGraphQLHeader(ServerRequestInterface $request): bool
+    private function isGraphQLRequest(ServerRequestInterface $request): bool
     {
         if (!$request->hasHeader('content-type')) {
             return false;

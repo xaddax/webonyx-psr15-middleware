@@ -1,7 +1,8 @@
 <?php
+
 declare(strict_types=1);
 
-namespace Zestic\GraphQL\Middleware;
+namespace GraphQL\Middleware;
 
 use Psr\Http\Message\ServerRequestInterface;
 
