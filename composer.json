@@ -1,6 +1,5 @@
 {
   "name": "xaddax/webonyx-psr15-middleware",
-  "version": "15.0.0",
   "type": "library",
   "description": "PSR-15 middleware for webonyx/graphql-php",
   "keywords": [
