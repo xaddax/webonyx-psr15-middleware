@@ -11,7 +11,7 @@ use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use GraphQL\Middleware\Factory\GraphQLMiddlewareFactory;
 use GraphQL\Middleware\GraphQLMiddleware;
-use GraphQL\Middleware\RequestPreprocessorInterface;
+use GraphQL\Middleware\Contract\RequestPreprocessorInterface;
 
 class GraphQLMiddlewareFactoryTest extends TestCase
 {

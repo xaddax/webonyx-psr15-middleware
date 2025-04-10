@@ -15,8 +15,8 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use GraphQL\Middleware\Factory\DefaultResponseFactory;
 use GraphQL\Middleware\GraphQLMiddleware;
-use GraphQL\Middleware\RequestContextInterface;
-use GraphQL\Middleware\RequestPreprocessorInterface;
+use GraphQL\Middleware\Contract\RequestContextInterface;
+use GraphQL\Middleware\Contract\RequestPreprocessorInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 
 class GraphQLMiddlewareTest extends TestCase
@@ -188,6 +188,7 @@ class GraphQLMiddlewareTest extends TestCase
         );
 
         /** @var RequestPreprocessorInterface&MockObject $preprocessor */
+        /** @var RequestPreprocessorInterface&MockObject $preprocessor */
         $preprocessor = $this->createMock(RequestPreprocessorInterface::class);
         $preprocessor->expects($this->once())
             ->method('process')
@@ -222,6 +223,7 @@ class GraphQLMiddlewareTest extends TestCase
             json_encode(['query' => '{ hello }'], JSON_THROW_ON_ERROR)
         );
 
+        /** @var RequestPreprocessorInterface&MockObject $preprocessor */
         /** @var RequestPreprocessorInterface&MockObject $preprocessor */
         $preprocessor = $this->createMock(RequestPreprocessorInterface::class);
         $preprocessor->expects($this->once())
@@ -263,16 +265,10 @@ class GraphQLMiddlewareTest extends TestCase
                 return null;
             });
 
-        $serverConfig = new ServerConfig();
-        $schema = $this->serverConfig->getSchema();
-        if (!$schema instanceof Schema) {
-            throw new \RuntimeException('Schema must be an instance of Schema');
-        }
-        $serverConfig->setSchema($schema);
-        $serverConfig->setContext($context);
+        $this->serverConfig->setContext($context);
 
         $middleware = new GraphQLMiddleware(
-            $serverConfig,
+            $this->serverConfig,
             $this->responseFactory,
             ['application/json']
         );

@@ -13,7 +13,7 @@ A framework-agnostic PSR-15 middleware for handling GraphQL requests using webon
 ## Installation
 
 ```bash
-composer require zestic/webonyx-psr15-middleware
+composer require xaddax/webonyx-psr15-middleware
 ```
 
 ## Requirements

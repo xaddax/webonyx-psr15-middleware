@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace GraphQL\Middleware\Tests\Factory;
 
 use Nyholm\Psr7\Factory\Psr17Factory;
+use JsonException;
 use PHPUnit\Framework\TestCase;
 use GraphQL\Middleware\Factory\DefaultResponseFactory;
 
@@ -24,18 +25,24 @@ class DefaultResponseFactoryTest extends TestCase
 
     public function testCreateResponse(): void
     {
+        $response = $this->factory->createResponse();
+        $this->assertEquals(200, $response->getStatusCode());
+    }
+
+    public function testCreateResponseWithData(): void
+    {
         $data = ['data' => ['hello' => 'world']];
-        $response = $this->factory->createResponse($data);
+        $response = $this->factory->createResponseWithData($data);
 
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertEquals('application/json', $response->getHeaderLine('Content-Type'));
-        $this->assertEquals(json_encode($data), (string) $response->getBody());
+        $this->assertEquals(json_encode($data, JSON_THROW_ON_ERROR), (string) $response->getBody());
     }
 
     public function testCreateResponseWithCustomStatus(): void
     {
         $data = ['data' => ['hello' => 'world']];
-        $response = $this->factory->createResponse($data, 201);
+        $response = $this->factory->createResponseWithData($data, 201);
 
         $this->assertEquals(201, $response->getStatusCode());
     }
@@ -44,7 +51,7 @@ class DefaultResponseFactoryTest extends TestCase
     {
         $data = ['data' => ['hello' => 'world']];
         $headers = ['X-Custom' => 'value'];
-        $response = $this->factory->createResponse($data, 200, $headers);
+        $response = $this->factory->createResponseWithData($data, 200, $headers);
 
         $this->assertEquals('value', $response->getHeaderLine('X-Custom'));
     }
@@ -69,9 +76,14 @@ class DefaultResponseFactoryTest extends TestCase
 
     public function testResponseWithInvalidJson(): void
     {
-        $this->expectException(\JsonException::class);
-
-        $data = ['data' => fopen('php://memory', 'r')]; // Cannot be JSON encoded
-        $this->factory->createResponse($data);
+        $resource = fopen('php://memory', 'r');
+        $this->expectException(JsonException::class);
+        try {
+            $this->factory->createResponseWithData(['data' => $resource]);
+        } finally {
+            if (is_resource($resource)) {
+                fclose($resource);
+            }
+        }
     }
 }

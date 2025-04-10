@@ -5,6 +5,8 @@ use GraphQL\Server\ServerConfig;
 use GraphQL\Type\Schema;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Slim\Factory\AppFactory;
+use Slim\Psr7\Factory\StreamFactory;
+use Slim\Psr7\Factory\ResponseFactory;
 use GraphQL\Middleware\Config\DefaultConfiguration;
 use GraphQL\Middleware\Factory\DefaultResponseFactory;
 use GraphQL\Middleware\Factory\GeneratedSchemaFactory;

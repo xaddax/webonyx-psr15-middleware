@@ -9,7 +9,7 @@ use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use GraphQL\Middleware\Contract\ResponseFactoryInterface as GraphQLResponseFactoryInterface;
 use GraphQL\Middleware\GraphQLMiddleware;
-use GraphQL\Middleware\RequestPreprocessorInterface;
+use GraphQL\Middleware\Contract\RequestPreprocessorInterface;
 
 final class GraphQLMiddlewareFactory
 {

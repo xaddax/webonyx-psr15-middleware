@@ -7,6 +7,7 @@ namespace GraphQL\Middleware\Factory;
 use Psr\Http\Message\ResponseFactoryInterface as PsrResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamFactoryInterface;
+use Psr\Http\Message\StreamInterface;
 use GraphQL\Middleware\Contract\ResponseFactoryInterface;
 
 final class DefaultResponseFactory implements ResponseFactoryInterface
@@ -17,21 +18,35 @@ final class DefaultResponseFactory implements ResponseFactoryInterface
     ) {
     }
 
-    public function createResponse(array $data, int $status = 200, array $headers = []): ResponseInterface
+    public function createResponse(int $code = 200): ResponseInterface
     {
-        $response = $this->responseFactory->createResponse($status);
-        $response = $response->withHeader('Content-Type', 'application/json');
+        return $this->responseFactory->createResponse($code);
+    }
 
+    public function createStream(string $content): StreamInterface
+    {
+        $stream = $this->streamFactory->createStream($content);
+        $stream->rewind();
+        return $stream;
+    }
+
+    public function createResponseWithData(array $data, int $status = 200, array $headers = []): ResponseInterface
+    {
+        $response = $this->createResponse($status);
         foreach ($headers as $name => $value) {
             $response = $response->withHeader($name, $value);
         }
 
-        $body = $this->streamFactory->createStream(json_encode($data, JSON_THROW_ON_ERROR));
-        return $response->withBody($body);
+        $response = $response->withHeader('Content-Type', 'application/json');
+        $response = $response->withBody($this->createStream(
+            json_encode($data, JSON_THROW_ON_ERROR)
+        ));
+
+        return $response;
     }
 
     public function createErrorResponse(array $errors, int $status = 400): ResponseInterface
     {
-        return $this->createResponse(['errors' => $errors], $status);
+        return $this->createResponseWithData(['errors' => $errors], $status);
     }
 }
