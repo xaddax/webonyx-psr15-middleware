@@ -32,27 +32,28 @@ class DefaultErrorHandlerTest extends TestCase
 
     public function testHandleErrorWithLocations(): void
     {
+        $source = new \GraphQL\Language\Source('type Query { field: String }');
         $error = new Error(
             'Test error',
             null,
+            $source,
+            [20],
             null,
-            [],
-            [0],
             null,
-            ['line' => 10, 'column' => 20]
+            null
         );
 
         /** @var array{message: string, locations: array<array{line: int, column: int}>} $result */
         $result = $this->handler->handleError($error, $this->request);
         assert(is_array($result));
 
-        $this->assertArrayHasKey('locations', $result);
-        $this->assertIsArray($result['locations']);
-        $this->assertCount(1, $result['locations']);
         $this->assertEquals([
-            'line' => 10,
-            'column' => 20
-        ], $result['locations'][0]);
+            'message' => 'Test error',
+            'locations' => [[
+                'line' => 1,
+                'column' => 21
+            ]]
+        ], $result);
     }
 
     public function testHandleErrorWithExtensions(): void

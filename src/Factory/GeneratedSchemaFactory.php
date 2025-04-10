@@ -134,47 +134,30 @@ class GeneratedSchemaFactory
 
     private function scanDirectory(string $directory, array &$subDirectories): void
     {
-        $dh = opendir($directory);
-        if ($dh === false) {
+        $entries = scandir($directory);
+        if ($entries === false) {
             return;
         }
 
-        try {
-            while (($file = readdir($dh)) !== false) {
-                $filePath = $directory . '/' . $file;
-                $info = pathinfo($filePath);
-
-                $this->processGraphQLFile($filePath, $info);
-                $this->collectSubdirectory($filePath, $info, $subDirectories);
+        foreach ($entries as $entry) {
+            if ($entry === '.' || $entry === '..') {
+                continue;
             }
-        } finally {
-            closedir($dh);
+
+            $path = $directory . '/' . $entry;
+            if (is_dir($path)) {
+                $subDirectories[] = $path;
+            } elseif (pathinfo($path, PATHINFO_EXTENSION) === 'graphql') {
+                $this->schemaFiles[$path] = filemtime($path);
+            }
         }
     }
 
-    private function processGraphQLFile(string $filePath, array $info): void
+    protected function getSchemaFiles(): array
     {
-        if (!isset($info['extension']) || $info['extension'] !== 'graphql') {
-            return;
+        if (empty($this->schemaFiles)) {
+            $this->scanDirectories($this->schemaDirectories);
         }
-
-        $key = realpath($filePath);
-        if ($key === false) {
-            throw new \RuntimeException(sprintf('Could not resolve real path for: %s', $filePath));
-        }
-
-        $lastModified = @filemtime($key);
-        if ($lastModified === false) {
-            throw new \RuntimeException(sprintf('Could not get modification time of file: %s', $key));
-        }
-
-        $this->schemaFiles[$key] = $lastModified;
-    }
-
-    private function collectSubdirectory(string $filePath, array $info, array &$subDirectories): void
-    {
-        if ($info['basename'] === $info['filename']) {
-            $subDirectories[] = $filePath;
-        }
+        return array_keys($this->schemaFiles);
     }
 }

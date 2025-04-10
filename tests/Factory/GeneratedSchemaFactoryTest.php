@@ -122,11 +122,18 @@ class GeneratedSchemaFactoryTest extends TestCase
         file_put_contents($schemaFile, 'type TestQuery { test: String }');
 
         try {
-            $this->config = $this->createMock(SchemaConfigurationInterface::class);
-            $this->config->expects($this->any())->method('isCacheEnabled')->willReturn(true);
+            $this->config = $this
+                ->createMock(SchemaConfigurationInterface::class);
             $this->config->expects($this->any())
+                ->method('isCacheEnabled')
+                ->willReturn(true);
+            $this->config
+                ->expects($this->any())
                 ->method('getSchemaDirectories')
-                ->willReturn(['/nonexistent', self::SCHEMA_DIR]);
+                ->willReturn([
+                    '/nonexistent',
+                    self::SCHEMA_DIR
+                ]);
             $this->config->expects($this->any())
                 ->method('getCacheDirectory')
                 ->willReturn(self::CACHE_DIR);

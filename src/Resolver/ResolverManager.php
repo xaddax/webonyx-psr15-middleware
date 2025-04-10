@@ -10,10 +10,14 @@ use GraphQL\Type\Definition\ResolveInfo;
 
 class ResolverManager
 {
+    /** @var callable|null */
+    private readonly mixed $fallbackResolver;
+
     public function __construct(
         private readonly ResolverFactory $resolverFactory,
-        private readonly mixed $fallbackResolver = null
+        ?callable $fallbackResolver = null
     ) {
+        $this->fallbackResolver = $fallbackResolver;
     }
 
     /**
@@ -24,14 +28,16 @@ class ResolverManager
         return function (array $typeConfig, TypeDefinitionNode $typeDefinitionNode): array {
             if ($typeConfig['name'] === 'Query' || $typeConfig['name'] === 'Mutation') {
                 $typeConfig['resolveField'] = function ($source, $args, $context, ResolveInfo $info) {
-                    // Convert field name to operation name (e.g., getUser, createUser)
                     $operationName = $this->formatOperationName($info->fieldName);
 
-                    // Try to get operation-specific resolver
+                    /** @var mixed $resolver */
                     $resolver = $this->resolverFactory->createResolver($operationName);
 
-                    if ($resolver) {
-                        return $resolver($source, $args, $context, $info);
+                    if ($resolver !== null) {
+                        if (!is_callable($resolver)) {
+                            throw new \RuntimeException("Resolver for {$operationName} is not callable");
+                        }
+                        return call_user_func($resolver, $source, $args, $context, $info);
                     }
 
                     // Fall back to default resolver if provided

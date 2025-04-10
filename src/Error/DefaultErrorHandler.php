@@ -15,36 +15,37 @@ class DefaultErrorHandler implements ErrorHandlerInterface
      */
     public function handleError(Error $error, ServerRequestInterface $request): array
     {
-        $formatted = [
+        $result = [
             'message' => $error->getMessage(),
         ];
 
-        // Handle locations
+        $locations = $error->getLocations();
+        if (!empty($locations)) {
+            $result['locations'] = array_map(
+                fn ($location) => [
+                    'line' => (int) $location->line,
+                    'column' => (int) $location->column,
+                ],
+                $locations
+            );
+        }
+
         $extensions = $error->getExtensions();
-        if (isset($extensions['line'], $extensions['column'])) {
-            $formatted['locations'] = [
-                [
-                    'line' => $extensions['line'],
-                    'column' => $extensions['column'],
-                ]
-            ];
-            // Remove location data from extensions
-            unset($extensions['line'], $extensions['column']);
+        if ($extensions) {
+            $result['extensions'] = $extensions;
         }
 
-        // Handle remaining extensions
-        if ($extensions !== null) {
-            $formatted['extensions'] = $extensions;
-        }
-
-        return $formatted;
+        return $result;
     }
 
     public function getStatusCode(Error $error): int
     {
         $extensions = $error->getExtensions();
-        if (isset($extensions['statusCode'])) {
+        if (isset($extensions['statusCode']) && is_numeric($extensions['statusCode'])) {
             return (int) $extensions['statusCode'];
+        }
+        if (isset($extensions['status']) && is_numeric($extensions['status'])) {
+            return (int) $extensions['status'];
         }
         return 200;
     }

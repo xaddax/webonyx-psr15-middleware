@@ -87,7 +87,10 @@ class GraphQLMiddlewareTest extends TestCase
         $this->assertEquals(200, $response->getStatusCode());
 
         $result = json_decode((string) $response->getBody(), true);
+        $this->assertIsArray($result, 'Result should be an array');
         $this->assertArrayHasKey('data', $result);
+        $this->assertIsArray($result['data'], 'Result data should be an array');
+        $this->assertArrayHasKey('hello', $result['data']);
         $this->assertEquals('Hello World!', $result['data']['hello']);
     }
 
@@ -131,11 +134,15 @@ class GraphQLMiddlewareTest extends TestCase
 
         $this->assertEquals(400, $response->getStatusCode());
         $result = json_decode((string) $response->getBody(), true);
+        $this->assertIsArray($result, 'Result should be an array');
         $this->assertArrayHasKey('errors', $result);
-        $this->assertIsArray($result['errors']);
-        $this->assertCount(1, $result['errors']);
+        $this->assertIsArray($result['errors'], 'Errors should be an array');
+        $this->assertCount(1, $result['errors'], 'Errors array should have one item');
+        $this->assertIsArray($result['errors'][0], 'Error item should be an array');
         $this->assertArrayHasKey('message', $result['errors'][0]);
+        $this->assertIsString($result['errors'][0]['message'], 'Error message should be a string');
         $this->assertStringContainsString('Invalid JSON', $result['errors'][0]['message']);
+        $this->assertStringContainsString('syntax error', strtolower($result['errors'][0]['message']));
     }
 
     public function testHandlesInvalidGraphQLQuery(): void
@@ -154,7 +161,13 @@ class GraphQLMiddlewareTest extends TestCase
 
         $this->assertEquals(200, $response->getStatusCode());
         $result = json_decode((string) $response->getBody(), true);
+        $this->assertIsArray($result, 'Result should be an array');
         $this->assertArrayHasKey('errors', $result);
+        $this->assertIsArray($result['errors'], 'Errors should be an array');
+        $this->assertNotEmpty($result['errors'], 'Errors array should not be empty');
+        $this->assertIsArray($result['errors'][0], 'Error item should be an array');
+        $this->assertArrayHasKey('message', $result['errors'][0]);
+        $this->assertIsString($result['errors'][0]['message'], 'Error message should be a string');
         $this->assertStringContainsString('Cannot query field', $result['errors'][0]['message']);
     }
 
@@ -174,7 +187,13 @@ class GraphQLMiddlewareTest extends TestCase
 
         $this->assertEquals(200, $response->getStatusCode());
         $result = json_decode((string) $response->getBody(), true);
+        $this->assertIsArray($result, 'Result should be an array');
         $this->assertArrayHasKey('errors', $result);
+        $this->assertIsArray($result['errors'], 'Errors should be an array');
+        $this->assertNotEmpty($result['errors'], 'Errors array should not be empty');
+        $this->assertIsArray($result['errors'][0], 'Error item should be an array');
+        $this->assertArrayHasKey('message', $result['errors'][0]);
+        $this->assertIsString($result['errors'][0]['message'], 'Error message should be a string');
         $this->assertStringContainsString('query', $result['errors'][0]['message']);
     }
 
@@ -210,7 +229,10 @@ class GraphQLMiddlewareTest extends TestCase
 
         $this->assertEquals(200, $response->getStatusCode());
         $result = json_decode((string) $response->getBody(), true);
+        $this->assertIsArray($result, 'Result should be an array');
         $this->assertArrayHasKey('data', $result);
+        $this->assertIsArray($result['data'], 'Result data should be an array');
+        $this->assertArrayHasKey('hello', $result['data']);
         $this->assertEquals('Hello World!', $result['data']['hello']);
     }
 
@@ -244,7 +266,11 @@ class GraphQLMiddlewareTest extends TestCase
 
         $this->assertEquals(401, $response->getStatusCode());
         $result = json_decode((string) $response->getBody(), true);
+        $this->assertIsArray($result, 'Result should be an array');
         $this->assertArrayHasKey('errors', $result);
+        $this->assertIsArray($result['errors'], 'Errors should be an array');
+        $this->assertArrayHasKey('message', $result['errors']);
+        $this->assertIsString($result['errors']['message'], 'Error message should be a string');
         $this->assertEquals('Unauthorized', $result['errors']['message']);
     }
 
@@ -280,7 +306,10 @@ class GraphQLMiddlewareTest extends TestCase
 
         $this->assertEquals(200, $response->getStatusCode());
         $result = json_decode((string) $response->getBody(), true);
+        $this->assertIsArray($result, 'Result should be an array');
         $this->assertArrayHasKey('data', $result);
+        $this->assertIsArray($result['data'], 'Result data should be an array');
+        $this->assertArrayHasKey('hello', $result['data']);
         $this->assertEquals('Hello World!', $result['data']['hello']);
     }
 
