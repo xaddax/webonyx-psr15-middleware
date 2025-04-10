@@ -78,24 +78,24 @@ final class GraphQLMiddleware implements MiddlewareInterface
             return $response;
         }
 
-        if ($result instanceof ExecutionResult) {
-            $data = $result->toArray();
-        } elseif (is_array($result)) {
-            $data = array_map(fn(ExecutionResult $r) => $r->toArray(), $result);
-        } else {
-            // Promise case - we can't handle this yet
-            throw new \RuntimeException('Async execution not supported');
-        }
+        $data = $this->convertResultToResponseData($result);
 
         $response = $this->responseFactory->createResponseWithData($data, 200);
 
         return $response;
     }
 
-    /**
-     * @return ExecutionResult
-     * @throws \Exception
-     */
+    private function convertResultToResponseData(mixed $result): array
+    {
+        if ($result instanceof ExecutionResult) {
+            return $result->toArray();
+        }
+        if (is_array($result)) {
+            return array_map(fn(ExecutionResult $r) => $r->toArray(), $result);
+        }
+        throw new \RuntimeException('Async execution not supported');
+    }
+
     /**
      * @return ExecutionResult|array<int,ExecutionResult>|Promise
      * @throws Error

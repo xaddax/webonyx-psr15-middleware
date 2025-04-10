@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace GraphQL\Middleware\Tests;
 
+use GraphQL\Server\StandardServer;
 use GraphQL\Server\ServerConfig;
 use GraphQL\Type\Definition\ObjectType;
 use GraphQL\Type\Definition\Type;
@@ -92,6 +93,54 @@ class GraphQLMiddlewareTest extends TestCase
         $this->assertIsArray($result['data'], 'Result data should be an array');
         $this->assertArrayHasKey('hello', $result['data']);
         $this->assertEquals('Hello World!', $result['data']['hello']);
+    }
+
+    public function testHandlesGraphQLException(): void
+    {
+        $schema = new Schema([
+            'query' => new ObjectType([
+                'name' => 'Query',
+                'fields' => [
+                    'error' => [
+                        'type' => Type::string(),
+                        'resolve' => function () {
+                            throw new \GraphQL\Error\Error('Test error');
+                        },
+                    ],
+                ],
+            ]),
+        ]);
+
+        $this->serverConfig->setSchema($schema);
+
+        $requestData = [
+            'query' => '{ error }',
+            'variables' => [],
+            'operationName' => null,
+        ];
+        $encodedData = json_encode($requestData, JSON_THROW_ON_ERROR);
+
+        $request = new ServerRequest(
+            'POST',
+            '/',
+            ['Content-Type' => 'application/json'],
+            $encodedData
+        );
+
+        /** @var RequestHandlerInterface&MockObject $handler */
+        $handler = $this->createMock(RequestHandlerInterface::class);
+        $handler->expects($this->never())->method('handle');
+
+        $response = $this->middleware->process($request, $handler);
+
+        $this->assertInstanceOf(ResponseInterface::class, $response);
+        $this->assertEquals(200, $response->getStatusCode());
+
+        $result = json_decode((string) $response->getBody(), true);
+        $this->assertIsArray($result);
+        $this->assertArrayHasKey('errors', $result);
+        $this->assertCount(1, $result['errors']);
+        $this->assertStringContainsString('Test error', $result['errors'][0]['message']);
     }
 
     public function testPassesNonGraphQLRequestToHandler(): void
