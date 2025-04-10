@@ -16,35 +16,21 @@ use GraphQL\Middleware\Generator\DefaultTypeMapper;
 
 class ResolverGenerator
 {
-    private TemplateEngineInterface $templateEngine;
+    private const DEFAULT_TEMPLATE_PATH = '/templates/resolver.php.template';
 
-    private const DEFAULT_TEMPLATE = <<<'TEMPLATE'
-<?php
-
-declare(strict_types=1);
-
-namespace {{namespace}};
-
-use GraphQL\Middleware\Contract\ResolverInterface;
-
-{{description}}
-class {{className}} implements ResolverInterface
-{
-    public function __invoke($source, array $args, $context, $info): {{returnType}}
-    {
-        // TODO: Implement resolver
-        throw new \RuntimeException('Not implemented');
-    }
-}
-TEMPLATE;
+    private string $templatePath;
 
     public function __construct(
         private readonly GeneratedSchemaFactory $schemaFactory,
-        private readonly string $namespace,
         private readonly string $outputDirectory,
-        ?TemplateEngineInterface $templateEngine = null
+        private readonly string $namespace,
+        private readonly TemplateEngineInterface $templateEngine,
+        ?string $templatePath = null,
     ) {
-        $this->templateEngine = $templateEngine ?? new SimpleTemplateEngine();
+        $this->templatePath = $templatePath ?? dirname(__DIR__, 2) . self::DEFAULT_TEMPLATE_PATH;
+        if (!file_exists($this->templatePath)) {
+            throw new GeneratorException('Template file not found: ' . $this->templatePath);
+        }
     }
 
     /**
@@ -95,8 +81,13 @@ TEMPLATE;
             return;
         }
 
+        $template = file_get_contents($this->templatePath);
+        if ($template === false) {
+            throw new GeneratorException('Failed to read template file: ' . $this->templatePath);
+        }
+
         $content = $this->templateEngine->render(
-            self::DEFAULT_TEMPLATE,
+            $template,
             [
                 'namespace' => $this->namespace . '\\' . ucfirst($requirement['type']),
                 'className' => $className,

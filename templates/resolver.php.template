@@ -1,0 +1,19 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{namespace}};
+
+use GraphQL\Middleware\Contract\ResolverInterface;
+
+/**
+ * {{description}}
+ */
+class {{className}} implements ResolverInterface
+{
+    public function __invoke(mixed $objectValue, array $args, mixed $context): {{returnType}}
+    {
+        // TODO: Implement resolver
+        return null;
+    }
+}

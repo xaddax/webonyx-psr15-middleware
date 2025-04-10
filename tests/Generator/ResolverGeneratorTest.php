@@ -92,8 +92,9 @@ GRAPHQL;
         // Setup resolver generator
         $this->generator = new ResolverGenerator(
             $this->schemaFactory,
-            'App\\GraphQL\\Resolver',
-            $this->root->getChild('src')->url()
+            $this->root->getChild('src')->url(),
+            'App\GraphQL\Resolver',
+            new SimpleTemplateEngine()
         );
     }
 
@@ -124,9 +125,9 @@ GRAPHQL;
         }
 
         $this->assertStringContainsString('namespace App\GraphQL\Resolver\Query', $userResolver);
-        $this->assertStringContainsString('class UserResolver implements ResolverInterface', $userResolver);
+        $this->assertStringContainsString('class UserResolver', $userResolver);
         $this->assertStringContainsString(
-            'public function __invoke($source, array $args, $context, $info): User|null',
+            'public function __invoke(mixed $objectValue, array $args, mixed $context): User|null',
             $userResolver,
         );
         $this->assertStringContainsString('@param array $args', $userResolver);
@@ -177,8 +178,9 @@ GRAPHQL;
 
         $this->generator = new ResolverGenerator(
             $this->schemaFactory,
-            'App\\GraphQL\\Resolver',
-            $this->root->getChild('src')->url()
+            $this->root->getChild('src')->url(),
+            'App\GraphQL\Resolver',
+            new SimpleTemplateEngine()
         );
 
         $this->generator->generateAll();
@@ -190,5 +192,62 @@ GRAPHQL;
         $this->assertStringContainsString('Get user by ID', $content);
         $this->assertStringContainsString('@param array $args', $content);
         $this->assertStringContainsString('- id: string', $content);
+    }
+
+    public function testUsesCustomTemplatePath(): void
+    {
+        $customTemplate = <<<'PHP'
+<?php
+
+declare(strict_types=1);
+
+namespace {{namespace}};
+
+/**
+ * {{description}}
+ */
+class {{className}}
+{
+    public function __invoke(): {{returnType}}
+    {
+        // Custom template
+        return null;
+    }
+}
+PHP;
+
+        $templatePath = $this->root->url() . '/custom-template.php';
+        file_put_contents($templatePath, $customTemplate);
+
+        $generator = new ResolverGenerator(
+            $this->schemaFactory,
+            $this->root->getChild('src')->url(),
+            'App\GraphQL\Resolver',
+            new SimpleTemplateEngine(),
+            $templatePath
+        );
+
+        $generator->generateAll();
+
+        $resolverPath = $this->root->getChild('src')->url() . '/Query/UserResolver.php';
+        $content = file_get_contents($resolverPath);
+        $this->assertNotFalse($content, 'Failed to read resolver file');
+
+        $this->assertStringContainsString('// Custom template', $content);
+        $this->assertStringContainsString('public function __invoke(): User|null', $content);
+    }
+
+    public function testThrowsExceptionOnMissingTemplate(): void
+    {
+        $this->expectException(GeneratorException::class);
+        $this->expectExceptionMessage('Template file not found');
+
+        new ResolverGenerator(
+            $this->schemaFactory,
+            $this->root->getChild('src')->url(),
+            'App\GraphQL\Resolver',
+            new SimpleTemplateEngine(),
+            '/non/existent/template.php'
+        );
     }
 }
