@@ -11,6 +11,7 @@ jobs:
     name: PHPUnit on PHP ${{ matrix.php-version }}
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: true
       matrix:
         php-version: ['8.3', '8.4']
 
@@ -32,3 +33,11 @@ jobs:
 
       - name: Run test suite
         run: XDEBUG_MODE=coverage composer test
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        if: matrix.php-version == '8.4'
+        with:
+          token: ${{ secrets.CODECOV_ORG_TOKEN }}
+          files: ./coverage.xml
+          fail_ci_if_error: true
