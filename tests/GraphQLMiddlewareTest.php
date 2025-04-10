@@ -139,7 +139,11 @@ class GraphQLMiddlewareTest extends TestCase
         $result = json_decode((string) $response->getBody(), true);
         $this->assertIsArray($result);
         $this->assertArrayHasKey('errors', $result);
+        $this->assertIsArray($result['errors']);
         $this->assertCount(1, $result['errors']);
+        $this->assertIsArray($result['errors'][0]);
+        $this->assertArrayHasKey('message', $result['errors'][0]);
+        $this->assertIsString($result['errors'][0]['message']);
         $this->assertStringContainsString('Test error', $result['errors'][0]['message']);
     }
 
