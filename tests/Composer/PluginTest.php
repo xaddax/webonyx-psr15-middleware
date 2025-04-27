@@ -6,6 +6,8 @@ use PHPUnit\Framework\TestCase;
 use GraphQL\Middleware\Composer\Plugin;
 use Composer\Script\Event;
 use Composer\IO\NullIO;
+use Composer\Composer;
+use Composer\IO\IOInterface;
 
 class PluginTest extends TestCase
 {
@@ -88,5 +90,38 @@ class PluginTest extends TestCase
         $this->assertArrayHasKey('scripts', $composerData);
         $this->assertArrayHasKey('generate-resolvers', $composerData['scripts']);
         $this->assertEquals('custom/script', $composerData['scripts']['generate-resolvers']);
+    }
+
+    public function testActivate(): void
+    {
+        $plugin = new Plugin();
+        $composer = $this->createMock(Composer::class);
+        $io = $this->createMock(IOInterface::class);
+
+        // The method is empty, but we test that it doesn't throw any exceptions
+        $plugin->activate($composer, $io);
+        $this->assertTrue(true); // Assert that we reached this point without exceptions
+    }
+
+    public function testDeactivate(): void
+    {
+        $plugin = new Plugin();
+        $composer = $this->createMock(Composer::class);
+        $io = $this->createMock(IOInterface::class);
+
+        // The method is empty, but we test that it doesn't throw any exceptions
+        $plugin->deactivate($composer, $io);
+        $this->assertTrue(true); // Assert that we reached this point without exceptions
+    }
+
+    public function testUninstall(): void
+    {
+        $plugin = new Plugin();
+        $composer = $this->createMock(Composer::class);
+        $io = $this->createMock(IOInterface::class);
+
+        // The method is empty, but we test that it doesn't throw any exceptions
+        $plugin->uninstall($composer, $io);
+        $this->assertTrue(true); // Assert that we reached this point without exceptions
     }
 }
