@@ -1,15 +1,22 @@
 #!/usr/bin/env php
 <?php
 
-require __DIR__ . '/../vendor/autoload.php';
+$projectRoot = getcwd();
+
+$autoloadPath = $projectRoot . '/vendor/autoload.php';
+if (!file_exists($autoloadPath)) {
+    fwrite(STDERR, "Error: Could not find autoload.php in project root.\n");
+    exit(1);
+}
+require $autoloadPath;
 
 use GraphQL\Middleware\Generator\ResolverGenerator;
 use Psr\Container\ContainerInterface;
 
 $container = null;
 $containerFiles = [
-    __DIR__ . '/../container.php',
-    __DIR__ . '/../config/container.php',
+    $projectRoot . '/container.php',
+    $projectRoot . '/config/container.php',
 ];
 
 foreach ($containerFiles as $file) {

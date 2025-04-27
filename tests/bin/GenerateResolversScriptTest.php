@@ -7,9 +7,9 @@ use PHPUnit\Framework\TestCase;
 class GenerateResolversScriptTest extends TestCase
 {
     private string $tempProjectDir;
-    private string $containerPath;
-    private string $scriptPath;
+    private ?string $containerPath = null;
     private string $oldCwd;
+    private string $scriptPath;
 
     protected function setUp(): void
     {
@@ -23,56 +23,105 @@ class GenerateResolversScriptTest extends TestCase
         $this->tempProjectDir = sys_get_temp_dir() . '/generate_resolvers_test_' . uniqid();
         mkdir($this->tempProjectDir);
 
-        // Copy and patch the bin script into the temp project
-        $originalScriptPath = realpath(__DIR__ . '/../../bin/generate-resolvers');
-        if ($originalScriptPath === false) {
-            throw new \RuntimeException('Failed to get realpath of original script');
-        }
+        // Copy the vendor, tests, and src directories
+        $this->recursiveCopy(__DIR__ . '/../../vendor', $this->tempProjectDir . '/vendor');
+        $this->recursiveCopy(__DIR__ . '/../../tests', $this->tempProjectDir . '/tests');
+        $this->recursiveCopy(__DIR__ . '/../../src', $this->tempProjectDir . '/src');
 
-        $originalScript = file_get_contents($originalScriptPath);
-        if ($originalScript === false) {
-            throw new \RuntimeException('Failed to read original script');
-        }
-
-        $patchedScript = preg_replace(
-            '/require\s+__DIR__\s*\.\s*[\'"]\/\.\.\/vendor\/autoload\.php[\'"]\s*;/',
-            'require __DIR__ . "/vendor/autoload.php";',
-            $originalScript
-        );
-        if ($patchedScript === null) {
-            throw new \RuntimeException('Failed to patch script (first replacement)');
-        }
-
-        $patchedScript = preg_replace(
-            '/\$containerFiles\s*=\s*\[\s*__DIR__\s*\.\s*[\'"]\/\.\.\/container\.php[\'"],\s*' .
-            '__DIR__\s*\.\s*[\'"]\/\.\.\/config\/container\.php[\'"],\s*\];/',
-            '$containerFiles = [__DIR__ . "/container.php", __DIR__ . "/config/container.php"];',
-            $patchedScript
-        );
-        if ($patchedScript === null) {
-            throw new \RuntimeException('Failed to patch script (second replacement)');
-        }
-
+        // Copy the script to the project root
         $this->scriptPath = $this->tempProjectDir . '/generate-resolvers';
-        if (file_put_contents($this->scriptPath, $patchedScript) === false) {
-            throw new \RuntimeException('Failed to write patched script');
+        $scriptContent = file_get_contents(__DIR__ . '/../../bin/generate-resolvers');
+        if ($scriptContent === false) {
+            throw new \RuntimeException('Failed to read generate-resolvers script');
+        }
+        if (file_put_contents($this->scriptPath, $scriptContent) === false) {
+            throw new \RuntimeException('Failed to write generate-resolvers script');
         }
         chmod($this->scriptPath, 0755);
+    }
 
-        // Symlink the real vendor/autoload.php into the temp project
-        $realAutoload = realpath(__DIR__ . '/../../vendor/autoload.php');
-        if ($realAutoload === false) {
-            throw new \RuntimeException('Failed to get realpath of autoload.php');
+    private function recursiveCopy(string $source, string $dest): void
+    {
+        if (!is_dir($source)) {
+            throw new \RuntimeException("Source directory does not exist: $source");
         }
 
-        $tempVendorDir = $this->tempProjectDir . '/vendor';
-        mkdir($tempVendorDir);
-        if (!symlink($realAutoload, $tempVendorDir . '/autoload.php')) {
-            throw new \RuntimeException('Failed to create symlink for autoload.php');
+        if (!is_dir($dest)) {
+            mkdir($dest, 0755, true);
         }
 
-        // Write the container.php in the temp project root
+        $dir = opendir($source);
+        if ($dir === false) {
+            throw new \RuntimeException("Failed to open source directory: $source");
+        }
+
+        while (($file = readdir($dir)) !== false) {
+            if ($file === '.' || $file === '..') {
+                continue;
+            }
+
+            $sourcePath = $source . '/' . $file;
+            $destPath = $dest . '/' . $file;
+
+            if (is_dir($sourcePath)) {
+                $this->recursiveCopy($sourcePath, $destPath);
+            } else {
+                if (!copy($sourcePath, $destPath)) {
+                    throw new \RuntimeException("Failed to copy file: $sourcePath to $destPath");
+                }
+            }
+        }
+
+        closedir($dir);
+    }
+
+    protected function tearDown(): void
+    {
+        chdir($this->oldCwd);
+        if ($this->containerPath !== null) {
+            @unlink($this->containerPath);
+        }
+        $this->recursiveRemoveDir($this->tempProjectDir);
+    }
+
+    private function recursiveRemoveDir(string $dir): void
+    {
+        if (!is_dir($dir)) {
+            return;
+        }
+        $files = scandir($dir);
+        if ($files === false) {
+            return;
+        }
+        $files = array_diff($files, ['.', '..']);
+        foreach ($files as $file) {
+            $path = $dir . '/' . $file;
+            is_dir($path) ? $this->recursiveRemoveDir($path) : unlink($path);
+        }
+        rmdir($dir);
+    }
+
+    private function createContainerFile(string $content): void
+    {
         $this->containerPath = $this->tempProjectDir . '/container.php';
+        if (file_put_contents($this->containerPath, $content) === false) {
+            throw new \RuntimeException('Failed to write container.php');
+        }
+    }
+
+    private function runScript(): array
+    {
+        chdir($this->tempProjectDir);
+        $output = shell_exec('php ' . escapeshellarg($this->scriptPath) . ' 2>&1');
+        if ($output === null || $output === false) {
+            throw new \RuntimeException('Failed to execute script');
+        }
+        $exitCode = str_starts_with($output, 'Error:') ? 1 : 0;
+        return [$output, $exitCode];
+    }
+
+    public function testScriptSucceedsWithContainer(): void
+    {
         $containerContent = <<<PHP
 <?php
 require_once __DIR__ . '/vendor/autoload.php';
@@ -96,36 +145,73 @@ return new class implements ContainerInterface {
     }
 };
 PHP;
-        if (file_put_contents($this->containerPath, $containerContent) === false) {
-            throw new \RuntimeException('Failed to write container.php');
+        $this->createContainerFile($containerContent);
+
+        [$output, $exitCode] = $this->runScript();
+        $this->assertStringContainsString('Resolvers generated successfully', $output);
+        $this->assertSame(0, $exitCode);
+    }
+
+    public function testScriptFailsWithoutContainer(): void
+    {
+        [$output, $exitCode] = $this->runScript();
+        $this->assertStringContainsString('No PSR-11 container found', $output);
+        $this->assertSame(1, $exitCode);
+    }
+
+    public function testScriptFailsWithoutResolverGenerator(): void
+    {
+        $containerContent = <<<PHP
+<?php
+require_once __DIR__ . '/vendor/autoload.php';
+
+use Psr\Container\ContainerInterface;
+
+return new class implements ContainerInterface {
+    public function get(string \$id) {
+        throw new \Exception("Not found");
+    }
+    public function has(string \$id): bool {
+        return false;
+    }
+};
+PHP;
+        $this->createContainerFile($containerContent);
+
+        [$output, $exitCode] = $this->runScript();
+        $this->assertStringContainsString('ResolverGenerator service not found', $output);
+        $this->assertSame(1, $exitCode);
+    }
+
+    public function testScriptFailsWhenGeneratorThrowsException(): void
+    {
+        $containerContent = <<<PHP
+<?php
+require_once __DIR__ . '/vendor/autoload.php';
+
+use Psr\Container\ContainerInterface;
+
+return new class implements ContainerInterface {
+    public function get(string \$id) {
+        if (\$id === \GraphQL\Middleware\Generator\ResolverGenerator::class) {
+            return new class extends \GraphQL\Middleware\Generator\ResolverGenerator {
+                public function __construct() {}
+                public function generateAll(): void {
+                    throw new \RuntimeException('Test error');
+                }
+            };
         }
+        throw new \Exception("Not found");
     }
-
-    protected function tearDown(): void
-    {
-        chdir($this->oldCwd);
-        @unlink($this->containerPath);
-        @unlink($this->scriptPath);
-        @unlink($this->tempProjectDir . '/vendor/autoload.php');
-        @rmdir($this->tempProjectDir . '/vendor');
-        @rmdir($this->tempProjectDir);
+    public function has(string \$id): bool {
+        return \$id === \GraphQL\Middleware\Generator\ResolverGenerator::class;
     }
+};
+PHP;
+        $this->createContainerFile($containerContent);
 
-    public function testScriptSucceedsWithContainer(): void
-    {
-        $output = [];
-        $returnVar = null;
-        $cmd = sprintf(
-            'php %s 2>&1',
-            escapeshellarg('./generate-resolvers')
-        );
-        // Run from temp project root so script finds container.php and vendor/autoload.php
-        chdir($this->tempProjectDir);
-        exec($cmd, $output, $returnVar);
-        chdir($this->oldCwd);
-
-        $outputText = implode("\n", $output);
-        $this->assertStringContainsString('Resolvers generated successfully', $outputText);
-        $this->assertSame(0, $returnVar);
+        [$output, $exitCode] = $this->runScript();
+        $this->assertStringContainsString('Test error', $output);
+        $this->assertSame(1, $exitCode);
     }
 }
