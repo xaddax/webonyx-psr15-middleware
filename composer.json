@@ -1,6 +1,6 @@
 {
   "name": "xaddax/webonyx-psr15-middleware",
-  "type": "library",
+  "type": "composer-plugin",
   "description": "PSR-15 middleware for webonyx/graphql-php",
   "keywords": [
     "graphql",
@@ -12,10 +12,15 @@
   "license": "MIT",
   "config": {
     "sort-packages": true
+  }, 
+  "bin": ["bin/generate-resolvers"],
+  "extra": {
+    "class": "GraphQL\\Middleware\\Composer\\Plugin"
   },
   "require": {
     "php": "^8.3 || ^8.4",
     "ext-mbstring": "*",
+    "composer-plugin-api": "^2.0",
     "psr/cache": "^3.0",
     "psr/container": "^2.0",
     "psr/http-factory": "^1.0",
@@ -25,6 +30,7 @@
     "webonyx/graphql-php": "^15.0.0"
   },
   "require-dev": {
+    "composer/composer": "^2.0",
     "mikey179/vfsstream": "^1.6",
     "nyholm/psr7": "^1.8",
     "phpstan/phpstan": "^1.10",
