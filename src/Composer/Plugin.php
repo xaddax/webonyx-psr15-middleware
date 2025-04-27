@@ -10,9 +10,11 @@ use Composer\Script\Event;
 
 class Plugin implements PluginInterface, EventSubscriberInterface
 {
-    public function activate(Composer $composer, IOInterface $io) {}
+    public function activate(Composer $composer, IOInterface $io): void
+    {
+    }
 
-    public static function getSubscribedEvents()
+    public static function getSubscribedEvents(): array
     {
         return [
             'post-install-cmd' => 'addGenerateResolversScript',
@@ -20,18 +22,40 @@ class Plugin implements PluginInterface, EventSubscriberInterface
         ];
     }
 
-    public function addGenerateResolversScript(Event $event)
+    public function addGenerateResolversScript(Event $event): void
     {
         $composerJson = getcwd() . '/composer.json';
-        $composerData = json_decode(file_get_contents($composerJson), true);
+        $composerJsonContent = file_get_contents($composerJson);
+
+        if ($composerJsonContent === false) {
+            throw new \RuntimeException('Failed to read composer.json');
+        }
+
+        $composerData = json_decode($composerJsonContent, true);
+        if (!is_array($composerData)) {
+            throw new \RuntimeException('Failed to decode composer.json');
+        }
 
         if (!isset($composerData['scripts']['generate-resolvers'])) {
             $composerData['scripts']['generate-resolvers'] = 'vendor/bin/generate-resolvers';
-            file_put_contents($composerJson, json_encode($composerData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n");
+            $result = file_put_contents(
+                $composerJson,
+                json_encode($composerData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n"
+            );
+
+            if ($result === false) {
+                throw new \RuntimeException('Failed to write to composer.json');
+            }
+
             $event->getIO()->write('<info>Added "generate-resolvers" script to composer.json</info>');
         }
     }
 
-    public function deactivate(Composer $composer, IOInterface $io) {}
-    public function uninstall(Composer $composer, IOInterface $io) {}
+    public function deactivate(Composer $composer, IOInterface $io): void
+    {
+    }
+
+    public function uninstall(Composer $composer, IOInterface $io): void
+    {
+    }
 }

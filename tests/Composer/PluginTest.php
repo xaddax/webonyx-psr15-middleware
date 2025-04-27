@@ -9,10 +9,10 @@ use Composer\IO\NullIO;
 
 class PluginTest extends TestCase
 {
-    private $tempDir;
-    private $composerJsonPath;
-    private $originalComposerJson;
-    private $oldCwd;
+    private string $tempDir;
+    private string $composerJsonPath;
+    private array $originalComposerJson;
+    private string $oldCwd;
 
     protected function setUp(): void
     {
@@ -24,7 +24,12 @@ class PluginTest extends TestCase
             "scripts" => []
         ];
         file_put_contents($this->composerJsonPath, json_encode($this->originalComposerJson));
-        $this->oldCwd = getcwd();
+
+        $cwd = getcwd();
+        if ($cwd === false) {
+            throw new \RuntimeException('Failed to get current working directory');
+        }
+        $this->oldCwd = $cwd;
         chdir($this->tempDir);
     }
 
@@ -35,7 +40,7 @@ class PluginTest extends TestCase
         @rmdir($this->tempDir);
     }
 
-    public function testAddGenerateResolversScript()
+    public function testAddGenerateResolversScript(): void
     {
         $plugin = new Plugin();
         $event = $this->createMock(Event::class);
@@ -43,12 +48,22 @@ class PluginTest extends TestCase
 
         $plugin->addGenerateResolversScript($event);
 
-        $composerData = json_decode(file_get_contents($this->composerJsonPath), true);
+        $composerJsonContent = file_get_contents($this->composerJsonPath);
+        if ($composerJsonContent === false) {
+            $this->fail('Failed to read composer.json');
+        }
+
+        $composerData = json_decode($composerJsonContent, true);
+        if (!is_array($composerData)) {
+            $this->fail('Failed to decode composer.json');
+        }
+
+        $this->assertArrayHasKey('scripts', $composerData);
         $this->assertArrayHasKey('generate-resolvers', $composerData['scripts']);
         $this->assertEquals('vendor/bin/generate-resolvers', $composerData['scripts']['generate-resolvers']);
     }
 
-    public function testDoesNotOverwriteExistingScript()
+    public function testDoesNotOverwriteExistingScript(): void
     {
         $composerData = $this->originalComposerJson;
         $composerData['scripts']['generate-resolvers'] = 'custom/script';
@@ -60,7 +75,18 @@ class PluginTest extends TestCase
 
         $plugin->addGenerateResolversScript($event);
 
-        $composerData = json_decode(file_get_contents($this->composerJsonPath), true);
+        $composerJsonContent = file_get_contents($this->composerJsonPath);
+        if ($composerJsonContent === false) {
+            $this->fail('Failed to read composer.json');
+        }
+
+        $composerData = json_decode($composerJsonContent, true);
+        if (!is_array($composerData)) {
+            $this->fail('Failed to decode composer.json');
+        }
+
+        $this->assertArrayHasKey('scripts', $composerData);
+        $this->assertArrayHasKey('generate-resolvers', $composerData['scripts']);
         $this->assertEquals('custom/script', $composerData['scripts']['generate-resolvers']);
     }
 }
