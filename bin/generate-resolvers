@@ -1,0 +1,41 @@
+#!/usr/bin/env php
+<?php
+
+require __DIR__ . '/../vendor/autoload.php';
+
+use GraphQL\Middleware\Generator\ResolverGenerator;
+use Psr\Container\ContainerInterface;
+
+$container = null;
+$containerFiles = [
+    __DIR__ . '/../container.php',
+    __DIR__ . '/../config/container.php',
+];
+
+foreach ($containerFiles as $file) {
+    if (file_exists($file)) {
+        $container = require $file;
+        break;
+    }
+}
+
+if (!$container || !($container instanceof ContainerInterface)) {
+    fwrite(STDERR, "Error: No PSR-11 container found. Please provide a container.php that returns a ContainerInterface instance.\n");
+    exit(1);
+}
+
+if (!$container->has(ResolverGenerator::class)) {
+    fwrite(STDERR, "Error: ResolverGenerator service not found in the container.\n");
+    exit(1);
+}
+
+$generator = $container->get(ResolverGenerator::class);
+
+try {
+    $generator->generateAll();
+    echo "Resolvers generated successfully.\n";
+    exit(0);
+} catch (\Throwable $e) {
+    fwrite(STDERR, "Error: " . $e->getMessage() . "\n");
+    exit(1);
+}

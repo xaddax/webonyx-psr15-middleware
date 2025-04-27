@@ -24,7 +24,6 @@ coverage.xml
 clover.xml
 
 # Cache and logs
-bin/
 cache/
 logs/
 *.log
