@@ -68,6 +68,7 @@
     "cs-check": "phpcs",
     "cs-fix": "phpcbf",
     "stan": "phpstan analyse",
-    "test": "phpunit --colors=always"
+    "test": "phpunit --colors=always",
+    "test:coverage": "XDEBUG_MODE=coverage phpunit --coverage-text --colors=always"
   }
 }
