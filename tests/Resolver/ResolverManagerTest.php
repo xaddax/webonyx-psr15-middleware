@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace GraphQL\Middleware\Test\Resolver;
+namespace GraphQL\Middleware\Tests\Resolver;
 
 use GraphQL\Language\AST\TypeDefinitionNode;
 use GraphQL\Middleware\Contract\ResolverInterface;

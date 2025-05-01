@@ -53,7 +53,7 @@
   },
   "autoload-dev": {
     "psr-4": {
-      "GraphQL\\Middleware\\Test\\": "tests",
+      "GraphQL\\Middleware\\Tests\\": "tests/",
       "Test\\Fixture\\": "tests/Fixture/src",
       "Test\\Integration\\": "tests/integration",
       "Test\\Unit\\": "tests/unit"

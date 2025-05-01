@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace GraphQL\Middleware\Test\Resolver;
+namespace GraphQL\Middleware\Tests\Resolver;
 
-use GraphQL\Middleware\Test\TestCase;
+use GraphQL\Middleware\Tests\TestCase;
 use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Container\ContainerInterface;
 use GraphQL\Middleware\Factory\ResolverFactory;

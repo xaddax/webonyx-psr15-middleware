@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace GraphQL\Middleware\Factory;
 
-use GraphQL\Middleware\Test\TestCase;
+use GraphQL\Middleware\Tests\TestCase;
 
 function class_exists(string $class): bool
 {

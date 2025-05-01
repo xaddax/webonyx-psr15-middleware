@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace GraphQL\Middleware\Test\Config;
+namespace GraphQL\Middleware\Tests\Config;
 
 use GraphQL\Middleware\Config\GeneratorConfig;
 use PHPUnit\Framework\TestCase;

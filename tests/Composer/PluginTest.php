@@ -1,6 +1,6 @@
 <?php
 
-namespace GraphQL\Middleware\Test\Composer;
+namespace GraphQL\Middleware\Tests\Composer;
 
 use PHPUnit\Framework\TestCase;
 use GraphQL\Middleware\Composer\Plugin;

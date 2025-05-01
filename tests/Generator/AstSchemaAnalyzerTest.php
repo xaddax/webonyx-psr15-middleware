@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace GraphQL\Middleware\Test\Generator;
+namespace GraphQL\Middleware\Tests\Generator;
 
 use GraphQL\Language\Parser;
 use GraphQL\Middleware\Contract\SchemaConfigurationInterface;

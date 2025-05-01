@@ -1,6 +1,6 @@
 <?php
 
-namespace GraphQL\Middleware\Test\Bin;
+namespace GraphQL\Middleware\Tests\Bin;
 
 use PHPUnit\Framework\TestCase;
 

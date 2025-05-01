@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace GraphQL\Middleware\Test;
+namespace GraphQL\Middleware\Tests;
 
 use PHPUnit\Framework\TestCase as PHPUnitTestCase;
 

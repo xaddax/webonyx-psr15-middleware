@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace GraphQL\Middleware\Factory;
 
 use GraphQL\Middleware\Contract\ResolverInterface;
-use GraphQL\Middleware\Test\TestCase;
+use GraphQL\Middleware\Tests\TestCase;
 use Psr\Container\ContainerInterface;
 
 class ResolverFactory
