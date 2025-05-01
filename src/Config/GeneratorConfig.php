@@ -120,4 +120,4 @@ class GeneratorConfig
 
         return $typeMappings;
     }
-} 
+}

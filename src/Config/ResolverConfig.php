@@ -6,4 +6,4 @@ namespace GraphQL\Middleware\Config;
 
 class ResolverConfig extends GeneratedClassConfig
 {
-} 
+}

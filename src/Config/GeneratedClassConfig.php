@@ -50,4 +50,4 @@ abstract class GeneratedClassConfig
             'templatePath' => $this->templatePath,
         ];
     }
-} 
+}

@@ -117,4 +117,4 @@ class GeneratedClassConfigTest extends TestCase
             ],
         ];
     }
-} 
+}
