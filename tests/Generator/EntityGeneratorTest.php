@@ -115,8 +115,12 @@ GRAPHQL;
 
         $this->templateEngine->expects($this->exactly(2))
             ->method('render')
-            ->willReturnCallback(function ($template, $data) {
-                return "<?php\n// Generated class for {$data['className']}\nclass {$data['className']} extends BaseEntity {}\n";
+            ->willReturnCallback(function (
+                $template,
+                $data
+            ) {
+                return "<?php\n// Generated class for {$data['className']}\n" .
+                    "class {$data['className']} extends BaseEntity {}\n";
             });
 
         $this->generator->generateAll();
