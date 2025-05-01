@@ -85,7 +85,7 @@ class GeneratorConfigTest extends TestCase
     /**
      * @dataProvider invalidTypeMappingsProvider
      */
-    public function testConstructorThrowsExceptionForInvalidTypeMappings(array $typeMappings, string $expectedMessage): void
+    public function testInvalidTypeMappingsThrowsException(array $typeMappings, string $expectedMessage): void
     {
         $config = self::VALID_CONFIG;
         $config['typeMappings'] = $typeMappings;
@@ -97,7 +97,10 @@ class GeneratorConfigTest extends TestCase
     }
 
     /**
-     * @return array<string, array{0: array<string, mixed>, 1: string}>
+     * @return array<string, array{
+     *     0: array<string, mixed>,
+     *     1: string
+     * }>
      */
     public static function invalidConfigProvider(): array
     {
@@ -163,7 +166,7 @@ class GeneratorConfigTest extends TestCase
     }
 
     /**
-     * @return array<string, array{array<string, mixed>, string}>
+     * @return array<string, array{0: array<int|string, string|int>, 1: string}>
      */
     public static function invalidTypeMappingsProvider(): array
     {
@@ -180,7 +183,7 @@ class GeneratorConfigTest extends TestCase
     }
 
     /**
-     * @return array<string, array{array<string, mixed>, string}>
+     * @return array<string, array{0: array<int|string, string|int>, 1: string}>
      */
     public static function invalidTypeMappingsProvider2(): array
     {
@@ -197,7 +200,7 @@ class GeneratorConfigTest extends TestCase
     }
 
     /**
-     * @return array<string, array{array<string, mixed>, string}>
+     * @return array<string, array{0: array<int|string, string|int>, 1: string}>
      */
     public static function invalidTypeMappingsProvider3(): array
     {
@@ -214,7 +217,7 @@ class GeneratorConfigTest extends TestCase
     }
 
     /**
-     * @return array<string, array{array<string, mixed>, string}>
+     * @return array<string, array{0: array<int|string, string|int>, 1: string}>
      */
     public static function invalidTypeMappingsProvider4(): array
     {

@@ -14,8 +14,6 @@ use GraphQL\Middleware\Config\RequestConfig;
 use PHPUnit\Framework\TestCase;
 use org\bovigo\vfs\vfsStream;
 use PHPUnit\Framework\MockObject\MockObject;
-use GraphQL\Language\Parser;
-use GraphQL\Utils\BuildSchema;
 
 class RequestGeneratorTest extends TestCase
 {
@@ -276,9 +274,13 @@ GRAPHQL;
 
         // Create templates directory with readable template
         $templateDir = vfsStream::newDirectory('templates', 0777)->at($this->root);
+        $templateContent = file_get_contents(__DIR__ . '/../../templates/request.php.template');
+        if ($templateContent === false) {
+            throw new \RuntimeException('Failed to read template file');
+        }
         $templateFile = vfsStream::newFile('request.php.template', 0777)
             ->at($templateDir)
-            ->setContent(file_get_contents(__DIR__ . '/../../templates/request.php.template'));
+            ->setContent($templateContent);
 
         // Create src directory as a file to prevent subdirectory creation
         $srcDir = vfsStream::newDirectory('src', 0777)->at($this->root);
