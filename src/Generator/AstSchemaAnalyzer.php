@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace GraphQL\Middleware\Generator;
 
+use GraphQL\Language\Parser;
 use GraphQL\Language\AST\DocumentNode;
-use GraphQL\Language\AST\FieldDefinitionNode;
 use GraphQL\Language\AST\InputValueDefinitionNode;
 use GraphQL\Language\AST\ListTypeNode;
 use GraphQL\Language\AST\NamedTypeNode;
@@ -13,16 +13,28 @@ use GraphQL\Language\AST\NodeList;
 use GraphQL\Language\AST\NonNullTypeNode;
 use GraphQL\Language\AST\ObjectTypeDefinitionNode;
 use GraphQL\Language\AST\ScalarTypeDefinitionNode;
+use GraphQL\Language\AST\InterfaceTypeDefinitionNode;
 use GraphQL\Middleware\Contract\SchemaAnalyzerInterface;
 use GraphQL\Middleware\Contract\TypeMapperInterface;
+use GraphQL\Middleware\Factory\GeneratedSchemaFactory;
 use GraphQL\Middleware\Exception\GeneratorException;
+use GraphQL\Utils\SchemaPrinter;
 
 class AstSchemaAnalyzer implements SchemaAnalyzerInterface
 {
+    private DocumentNode $ast;
+
     public function __construct(
-        private readonly DocumentNode $ast,
+        private readonly GeneratedSchemaFactory $schemaFactory,
         private readonly TypeMapperInterface $typeMapper
     ) {
+        $schema = $this->schemaFactory->createSchema();
+        $sdl = SchemaPrinter::doPrint($schema);
+        $this->ast = Parser::parse($sdl);
+
+        if (!$this->ast instanceof DocumentNode) {
+            throw new GeneratorException('Schema AST is not a DocumentNode');
+        }
     }
 
     /**
@@ -38,12 +50,10 @@ class AstSchemaAnalyzer implements SchemaAnalyzerInterface
     {
         $requirements = [];
         foreach ($this->ast->definitions as $definition) {
-            if (!$definition instanceof ObjectTypeDefinitionNode) {
-                continue;
-            }
-
-            // Skip scalar and input types
-            if (in_array($definition->name->value, ['String', 'Int', 'Float', 'Boolean', 'ID'])) {
+            if (
+                !($definition instanceof ObjectTypeDefinitionNode
+                    || $definition instanceof InterfaceTypeDefinitionNode)
+            ) {
                 continue;
             }
 
@@ -51,10 +61,23 @@ class AstSchemaAnalyzer implements SchemaAnalyzerInterface
                 continue;
             }
 
+            $isRootType = in_array($definition->name->value, ['Query', 'Mutation']);
+
             foreach ($definition->fields as $field) {
-                // Skip fields that return scalar types
-                if ($this->isScalarType($field->type)) {
+                // Skip scalar fields in root types that are empty placeholders
+                if ($isRootType && $field->name->value === '_empty') {
                     continue;
+                }
+
+                // For non-root types, only include fields that return non-scalar types
+                if (!$isRootType) {
+                    $type = $field->type;
+                    while ($type instanceof NonNullTypeNode || $type instanceof ListTypeNode) {
+                        $type = $type->type;
+                    }
+                    if ($this->isScalarType($type)) {
+                        continue;
+                    }
                 }
 
                 $key = $definition->name->value . '.' . $field->name->value;
@@ -73,27 +96,33 @@ class AstSchemaAnalyzer implements SchemaAnalyzerInterface
     /**
      * @param ListTypeNode|NamedTypeNode|NonNullTypeNode $typeNode
      */
-    private function getTypeString(mixed $typeNode): string
+    private function getTypeString(mixed $typeNode, bool $isNonNull = false): string
     {
-        // Handle non-null and list types recursively
-        if (property_exists($typeNode, 'type')) {
-            $baseType = $this->getTypeString($typeNode->type);
-            return $typeNode instanceof NonNullTypeNode
-                ? $baseType
-                : $baseType . '|null';
+        // Handle non-null types first
+        if ($typeNode instanceof NonNullTypeNode) {
+            return $this->getTypeString($typeNode->type, true);
         }
 
         // Handle list types
         if ($typeNode instanceof ListTypeNode) {
-            $innerType = $this->getTypeString($typeNode->type);
-            return 'array<' . $innerType . '>';
+            // For list types, we need to handle the inner type's nullability separately
+            // The inner type should be nullable unless it's marked with !
+            // Pass through the current isNonNull for the inner type
+            $innerType = $this->getTypeString($typeNode->type, false);
+            // The array itself is nullable unless the outer type is marked with !
+            return $isNonNull ? 'array<' . $innerType . '>' : 'array<' . $innerType . '>|null';
+        }
+
+        // Handle named types - in GraphQL, ALL types are nullable by default unless marked with !
+        if ($typeNode instanceof NamedTypeNode) {
+            $baseType = $this->getBaseType($typeNode);
+            // Add |null for any type that isn't marked as non-null
+            return $isNonNull ? $baseType : $baseType . '|null';
         }
 
         // Get base type
         return $this->getBaseType($typeNode);
     }
-
-
 
     /**
      * @param NodeList<InputValueDefinitionNode> $args
@@ -103,7 +132,14 @@ class AstSchemaAnalyzer implements SchemaAnalyzerInterface
     {
         $types = [];
         foreach ($args as $arg) {
-            $types[$arg->name->value] = $this->getTypeString($arg->type);
+            // For arguments, we want the base PHP type without nullability
+            // as PHP's type system handles nullability differently from GraphQL
+            $type = $arg->type;
+            while ($type instanceof NonNullTypeNode || $type instanceof ListTypeNode) {
+                $type = $type->type;
+            }
+            $baseType = $this->typeMapper->toPhpType($type->name->value);
+            $types[$arg->name->value] = $baseType;
         }
         return $types;
     }
@@ -113,6 +149,14 @@ class AstSchemaAnalyzer implements SchemaAnalyzerInterface
      */
     private function getBaseType(mixed $typeNode): string
     {
+        if ($typeNode instanceof NonNullTypeNode) {
+            return $this->getBaseType($typeNode->type);
+        }
+
+        if ($typeNode instanceof ListTypeNode) {
+            return $this->getBaseType($typeNode->type);
+        }
+
         if (!$typeNode instanceof NamedTypeNode) {
             throw new GeneratorException('Invalid type node');
         }
@@ -156,5 +200,10 @@ class AstSchemaAnalyzer implements SchemaAnalyzerInterface
         }
 
         return false;
+    }
+
+    private function isNonNullType(mixed $typeNode): bool
+    {
+        return $typeNode instanceof NonNullTypeNode;
     }
 }
