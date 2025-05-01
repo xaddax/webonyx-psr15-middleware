@@ -24,6 +24,7 @@
         <include>
             <directory>src</directory>
             <file>bin/generate-resolvers</file>
+            <file>bin/generate-requests</file>
         </include>
     </source>
 </phpunit>

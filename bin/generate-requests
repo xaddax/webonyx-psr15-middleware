@@ -10,7 +10,7 @@ if (!file_exists($autoloadPath)) {
 }
 require $autoloadPath;
 
-use GraphQL\Middleware\Generator\ResolverGenerator;
+use GraphQL\Middleware\Generator\RequestGenerator;
 use GraphQL\Middleware\Generator\AstSchemaAnalyzer;
 use GraphQL\Middleware\Generator\DefaultTypeMapper;
 use GraphQL\Middleware\Generator\SimpleTemplateEngine;
@@ -37,17 +37,17 @@ if (!$container || !($container instanceof ContainerInterface)) {
     exit(1);
 }
 
-if (!$container->has(ResolverGenerator::class)) {
-    fwrite(STDERR, "Error: ResolverGenerator service not found in the container.\n");
+if (!$container->has(RequestGenerator::class)) {
+    fwrite(STDERR, "Error: RequestGenerator service not found in the container.\n");
     exit(1);
 }
 
 try {
-    $generator = $container->get(ResolverGenerator::class);
+    $generator = $container->get(RequestGenerator::class);
     $generator->generateAll();
-    echo "Resolvers generated successfully.\n";
+    echo "Requests generated successfully.\n";
     exit(0);
 } catch (\Throwable $e) {
     fwrite(STDERR, "Error: " . $e->getMessage() . "\n");
     exit(1);
-}
+} 

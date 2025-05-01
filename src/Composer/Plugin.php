@@ -17,12 +17,12 @@ class Plugin implements PluginInterface, EventSubscriberInterface
     public static function getSubscribedEvents(): array
     {
         return [
-            'post-install-cmd' => 'addGenerateResolversScript',
-            'post-update-cmd' => 'addGenerateResolversScript',
+            'post-install-cmd' => 'addGeneratorScripts',
+            'post-update-cmd' => 'addGeneratorScripts',
         ];
     }
 
-    public function addGenerateResolversScript(Event $event): void
+    public function addGeneratorScripts(Event $event): void
     {
         $composerJson = getcwd() . '/composer.json';
         $composerJsonContent = file_get_contents($composerJson);
@@ -36,8 +36,21 @@ class Plugin implements PluginInterface, EventSubscriberInterface
             throw new \RuntimeException('Failed to decode composer.json');
         }
 
+        $scriptsAdded = false;
+
         if (!isset($composerData['scripts']['generate-resolvers'])) {
             $composerData['scripts']['generate-resolvers'] = 'vendor/bin/generate-resolvers';
+            $scriptsAdded = true;
+            $event->getIO()->write('<info>Added "generate-resolvers" script to composer.json</info>');
+        }
+
+        if (!isset($composerData['scripts']['generate-requests'])) {
+            $composerData['scripts']['generate-requests'] = 'vendor/bin/generate-requests';
+            $scriptsAdded = true;
+            $event->getIO()->write('<info>Added "generate-requests" script to composer.json</info>');
+        }
+
+        if ($scriptsAdded) {
             $result = file_put_contents(
                 $composerJson,
                 json_encode($composerData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n"
@@ -46,8 +59,6 @@ class Plugin implements PluginInterface, EventSubscriberInterface
             if ($result === false) {
                 throw new \RuntimeException('Failed to write to composer.json');
             }
-
-            $event->getIO()->write('<info>Added "generate-resolvers" script to composer.json</info>');
         }
     }
 

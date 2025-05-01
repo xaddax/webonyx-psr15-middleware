@@ -42,13 +42,13 @@ class PluginTest extends TestCase
         @rmdir($this->tempDir);
     }
 
-    public function testAddGenerateResolversScript(): void
+    public function testAddGeneratorScripts(): void
     {
         $plugin = new Plugin();
         $event = $this->createMock(Event::class);
         $event->method('getIO')->willReturn(new NullIO());
 
-        $plugin->addGenerateResolversScript($event);
+        $plugin->addGeneratorScripts($event);
 
         $composerJsonContent = file_get_contents($this->composerJsonPath);
         if ($composerJsonContent === false) {
@@ -63,19 +63,22 @@ class PluginTest extends TestCase
         $this->assertArrayHasKey('scripts', $composerData);
         $this->assertArrayHasKey('generate-resolvers', $composerData['scripts']);
         $this->assertEquals('vendor/bin/generate-resolvers', $composerData['scripts']['generate-resolvers']);
+        $this->assertArrayHasKey('generate-requests', $composerData['scripts']);
+        $this->assertEquals('vendor/bin/generate-requests', $composerData['scripts']['generate-requests']);
     }
 
-    public function testDoesNotOverwriteExistingScript(): void
+    public function testDoesNotOverwriteExistingScripts(): void
     {
         $composerData = $this->originalComposerJson;
-        $composerData['scripts']['generate-resolvers'] = 'custom/script';
+        $composerData['scripts']['generate-resolvers'] = 'custom/resolver-script';
+        $composerData['scripts']['generate-requests'] = 'custom/request-script';
         file_put_contents($this->composerJsonPath, json_encode($composerData));
 
         $plugin = new Plugin();
         $event = $this->createMock(Event::class);
         $event->method('getIO')->willReturn(new NullIO());
 
-        $plugin->addGenerateResolversScript($event);
+        $plugin->addGeneratorScripts($event);
 
         $composerJsonContent = file_get_contents($this->composerJsonPath);
         if ($composerJsonContent === false) {
@@ -89,7 +92,9 @@ class PluginTest extends TestCase
 
         $this->assertArrayHasKey('scripts', $composerData);
         $this->assertArrayHasKey('generate-resolvers', $composerData['scripts']);
-        $this->assertEquals('custom/script', $composerData['scripts']['generate-resolvers']);
+        $this->assertEquals('custom/resolver-script', $composerData['scripts']['generate-resolvers']);
+        $this->assertArrayHasKey('generate-requests', $composerData['scripts']);
+        $this->assertEquals('custom/request-script', $composerData['scripts']['generate-requests']);
     }
 
     public function testActivate(): void

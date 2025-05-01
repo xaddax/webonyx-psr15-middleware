@@ -1,0 +1,122 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use GraphQL\Language\Parser;
+use GraphQL\Middleware\Generator\AstSchemaAnalyzer;
+use GraphQL\Middleware\Generator\DefaultTypeMapper;
+use GraphQL\Middleware\Generator\ResolverGenerator;
+use GraphQL\Middleware\Generator\SimpleTemplateEngine;
+use GraphQL\Middleware\Factory\GeneratedSchemaFactory;
+use GraphQL\Middleware\Configuration\SchemaConfiguration;
+use GraphQL\Middleware\Config\GeneratorConfig;
+
+// Ensure we're running from the correct directory
+$dir = dirname(__DIR__);
+if (file_exists($dir . '/vendor/autoload.php')) {
+    require $dir . '/vendor/autoload.php';
+} elseif (file_exists('./vendor/autoload.php')) {
+    require './vendor/autoload.php';
+} else {
+    fwrite(STDERR, 'Unable to find autoloader' . PHP_EOL);
+    exit(1);
+}
+
+// Parse command line arguments
+$options = getopt('', ['schema:', 'output:', 'namespace:']);
+
+if (!isset($options['schema'])) {
+    fwrite(STDERR, 'Missing required --schema option' . PHP_EOL);
+    exit(1);
+}
+
+if (!isset($options['output'])) {
+    fwrite(STDERR, 'Missing required --output option' . PHP_EOL);
+    exit(1);
+}
+
+if (!isset($options['namespace'])) {
+    fwrite(STDERR, 'Missing required --namespace option' . PHP_EOL);
+    exit(1);
+}
+
+$schemaPath = $options['schema'];
+$outputDir = $options['output'];
+$namespace = $options['namespace'];
+
+if (!file_exists($schemaPath)) {
+    fwrite(STDERR, "Schema file not found: {$schemaPath}" . PHP_EOL);
+    exit(1);
+}
+
+if (!is_dir($outputDir)) {
+    if (!@mkdir($outputDir, 0777, true)) {
+        fwrite(STDERR, "Failed to create output directory: {$outputDir}" . PHP_EOL);
+        exit(1);
+    }
+}
+
+try {
+    // Create schema configuration
+    $config = new SchemaConfiguration(
+        [dirname($schemaPath)],
+        false,
+        sys_get_temp_dir(),
+        'directory-changes.php',
+        'schema.php',
+        [],
+        ['namespace' => $namespace]
+    );
+    
+    // Create schema factory
+    $schemaFactory = new GeneratedSchemaFactory($config);
+
+    // Create generator config
+    $generatorConfig = new GeneratorConfig([
+        'entityConfig' => [
+            'namespace' => $namespace,
+            'fileLocation' => $outputDir,
+            'templatePath' => dirname(__DIR__) . '/templates/entity.php.template',
+        ],
+        'requestConfig' => [
+            'namespace' => $namespace . '\\Request',
+            'fileLocation' => $outputDir . '/Request',
+            'templatePath' => dirname(__DIR__) . '/templates/request.php.template',
+        ],
+        'resolverConfig' => [
+            'namespace' => $namespace . '\\Resolver',
+            'fileLocation' => $outputDir . '/Resolver',
+            'templatePath' => dirname(__DIR__) . '/templates/resolver.php.template',
+        ],
+        'typeMappings' => [
+            'ID' => 'string',
+            'String' => 'string',
+            'Int' => 'int',
+            'Float' => 'float',
+            'Boolean' => 'bool',
+        ],
+        'customTypes' => [],
+        'isImmutable' => true,
+        'hasStrictTypes' => true,
+    ]);
+    
+    // Create schema analyzer
+    $analyzer = new AstSchemaAnalyzer($schemaFactory, new DefaultTypeMapper());
+    
+    // Create resolver generator
+    $generator = new ResolverGenerator(
+        $analyzer,
+        $generatorConfig,
+        new SimpleTemplateEngine()
+    );
+
+    // Generate all resolvers
+    $generator->generateAll();
+
+    fwrite(STDOUT, "Successfully generated entities in {$outputDir}" . PHP_EOL);
+    exit(0);
+} catch (Throwable $e) {
+    fwrite(STDERR, "Error generating entities: {$e->getMessage()}" . PHP_EOL);
+    exit(1);
+} 
