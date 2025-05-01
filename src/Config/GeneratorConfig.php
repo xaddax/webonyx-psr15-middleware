@@ -109,6 +109,7 @@ class GeneratorConfig
      */
     private function validateTypeMappings(array $typeMappings): array
     {
+        $validatedMappings = [];
         foreach ($typeMappings as $key => $value) {
             if (!is_string($key)) {
                 throw new \InvalidArgumentException('Type mapping keys must be strings');
@@ -116,8 +117,9 @@ class GeneratorConfig
             if (!is_string($value)) {
                 throw new \InvalidArgumentException('Type mapping values must be strings');
             }
+            $validatedMappings[$key] = $value;
         }
 
-        return $typeMappings;
+        return $validatedMappings;
     }
 }

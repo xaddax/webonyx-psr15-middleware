@@ -137,7 +137,7 @@ GRAPHQL;
         $this->assertEquals('Query', $searchField['type']);
         $this->assertEquals('search', $searchField['field']);
         $this->assertEquals('SearchResult|null', $searchField['returnType']);
-        $this->assertEquals(['term' => 'string'], $searchField['args']);
+        $this->assertEquals(['term' => 'string|null'], $searchField['args']);
     }
 
     public function testHandlesFieldDescriptions(): void
@@ -148,5 +148,142 @@ GRAPHQL;
         $this->assertArrayHasKey('User.posts', $requirements);
         $userPosts = $requirements['User.posts'];
         $this->assertNull($userPosts['description']); // Field itself has no description
+    }
+
+    public function testGetRequestRequirements(): void
+    {
+        $requirements = $this->analyzer->getRequestRequirements();
+
+        $this->assertIsArray($requirements);
+        $this->assertNotEmpty($requirements);
+
+        // Test UserInput type
+        $this->assertArrayHasKey('UserInput', $requirements);
+        $userInput = $requirements['UserInput'];
+
+        $this->assertEquals('UserInput', $userInput['name']);
+        $this->assertNull($userInput['description']);
+
+        // Test fields
+        $this->assertArrayHasKey('name', $userInput['fields']);
+        $this->assertArrayHasKey('age', $userInput['fields']);
+
+        $this->assertEquals('string', $userInput['fields']['name']);
+        $this->assertEquals('int|null', $userInput['fields']['age']);
+    }
+
+    public function testGetRequestRequirementsWithComplexInput(): void
+    {
+        $schema = <<<'GRAPHQL'
+"""
+Input for creating a new user
+"""
+input CreateUserInput {
+    name: String!
+    age: Int
+    address: AddressInput!
+    tags: [String!]
+    roles: [RoleInput!]!
+}
+
+input AddressInput {
+    street: String!
+    city: String!
+    country: String!
+}
+
+input RoleInput {
+    name: String!
+    permissions: [String!]!
+}
+GRAPHQL;
+
+        // Create new schema file
+        $schemaPath = $this->root->getChild('schema')->url() . '/complex-schema.graphql';
+        file_put_contents($schemaPath, $schema);
+
+        // Create new analyzer with the complex schema
+        $this->config->expects($this->any())
+            ->method('getSchemaDirectories')
+            ->willReturn([$this->root->getChild('schema')->url()]);
+        $schemaFactory = new GeneratedSchemaFactory($this->config);
+        $analyzer = new AstSchemaAnalyzer($schemaFactory, $this->typeMapper);
+
+        $requirements = $analyzer->getRequestRequirements();
+
+        // Test CreateUserInput
+        $this->assertArrayHasKey('CreateUserInput', $requirements);
+        $createUserInput = $requirements['CreateUserInput'];
+
+        $this->assertEquals('CreateUserInput', $createUserInput['name']);
+        $this->assertEquals('Input for creating a new user', $createUserInput['description']);
+
+        // Test fields
+        $this->assertArrayHasKey('name', $createUserInput['fields']);
+        $this->assertArrayHasKey('age', $createUserInput['fields']);
+        $this->assertArrayHasKey('address', $createUserInput['fields']);
+        $this->assertArrayHasKey('tags', $createUserInput['fields']);
+        $this->assertArrayHasKey('roles', $createUserInput['fields']);
+
+        $this->assertEquals('string', $createUserInput['fields']['name']);
+        $this->assertEquals('int|null', $createUserInput['fields']['age']);
+        $this->assertEquals('AddressInput', $createUserInput['fields']['address']);
+        $this->assertEquals('array<string>|null', $createUserInput['fields']['tags']);
+        $this->assertEquals('array<RoleInput>', $createUserInput['fields']['roles']);
+
+        // Test AddressInput
+        $this->assertArrayHasKey('AddressInput', $requirements);
+        $addressInput = $requirements['AddressInput'];
+
+        $this->assertEquals('AddressInput', $addressInput['name']);
+        $this->assertNull($addressInput['description']);
+
+        $this->assertEquals('string', $addressInput['fields']['street']);
+        $this->assertEquals('string', $addressInput['fields']['city']);
+        $this->assertEquals('string', $addressInput['fields']['country']);
+
+        // Test RoleInput
+        $this->assertArrayHasKey('RoleInput', $requirements);
+        $roleInput = $requirements['RoleInput'];
+
+        $this->assertEquals('RoleInput', $roleInput['name']);
+        $this->assertEquals('string', $roleInput['fields']['name']);
+        $this->assertEquals('array<string>', $roleInput['fields']['permissions']);
+    }
+
+    public function testHandlesEmptySchema(): void
+    {
+        $schema = <<<'GRAPHQL'
+input EmptyInput {
+    unused: String
+}
+GRAPHQL;
+
+        $schemaPath = $this->root->getChild('schema')->url() . '/empty-schema.graphql';
+        file_put_contents($schemaPath, $schema);
+
+        $this->config->expects($this->any())
+            ->method('getSchemaDirectories')
+            ->willReturn([$this->root->getChild('schema')->url()]);
+        $schemaFactory = new GeneratedSchemaFactory($this->config);
+        $analyzer = new AstSchemaAnalyzer($schemaFactory, $this->typeMapper);
+
+        $requirements = $analyzer->getRequestRequirements();
+        $this->assertArrayHasKey('EmptyInput', $requirements);
+        $this->assertArrayHasKey('unused', $requirements['EmptyInput']['fields']);
+        $this->assertEquals('string|null', $requirements['EmptyInput']['fields']['unused']);
+    }
+
+    public function testHandlesInvalidAst(): void
+    {
+        $this->expectException(\GraphQL\Error\SyntaxError::class);
+        $this->expectExceptionMessage('Syntax Error: Unexpected <EOF>');
+
+        $mockSchemaFactory = $this->createMock(GeneratedSchemaFactory::class);
+        $mockSchemaFactory->expects($this->once())
+            ->method('createSchema')
+            ->willReturn(new \GraphQL\Type\Schema([]));
+
+        new AstSchemaAnalyzer($mockSchemaFactory, $this->typeMapper);
     }
 }

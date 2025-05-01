@@ -169,7 +169,7 @@ class GeneratorConfigTest extends TestCase
     {
         return [
             'non-string key' => [
-                [123 => 'string'],
+                ['123' => 'string'],
                 'Type mapping keys must be strings',
             ],
             'non-string value' => [

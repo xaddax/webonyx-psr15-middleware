@@ -15,12 +15,19 @@ use GraphQL\Utils\BuildSchema;
 use org\bovigo\vfs\vfsStream;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\MockObject\MockObject;
+use GraphQL\Middleware\Config\GeneratorConfig;
+use GraphQL\Middleware\Generator\AstSchemaAnalyzer;
+use GraphQL\Middleware\Generator\DefaultTypeMapper;
 
 class ResolverGeneratorTest extends TestCase
 {
     private const TEST_SCHEMA = <<<'GRAPHQL'
 type Query {
     user(id: ID!): User
+}
+
+type Mutation {
+    createUser(name: String!, age: Int): User
 }
 
 """
@@ -42,8 +49,9 @@ GRAPHQL;
 
     private \org\bovigo\vfs\vfsStreamDirectory $root;
     private SchemaConfigurationInterface&MockObject $config;
-    private GeneratedSchemaFactory&MockObject $schemaFactory;
+    private GeneratedSchemaFactory $schemaFactory;
     private ResolverGenerator $generator;
+    private GeneratorConfig $generatorConfig;
 
     protected function setUp(): void
     {
@@ -55,15 +63,17 @@ GRAPHQL;
                 'Post' => []
             ]
         ], $this->root);
-        $this->config = $this->createMock(SchemaConfigurationInterface::class);
 
-        // Setup schema factory with test schema
+        // Setup schema directory and file
         $schemaDir = vfsStream::newDirectory('schema')->at($this->root);
         $schemaPath = $schemaDir->url() . '/schema.graphql';
         file_put_contents($schemaPath, self::TEST_SCHEMA);
 
+        // Create cache directory
         $cacheDir = vfsStream::newDirectory('cache')->at($this->root);
 
+        // Set up schema configuration
+        $this->config = $this->createMock(SchemaConfigurationInterface::class);
         $this->config->expects($this->any())
             ->method('getSchemaDirectories')
             ->willReturn([$schemaDir->url()]);
@@ -83,18 +93,46 @@ GRAPHQL;
             ->method('getParserOptions')
             ->willReturn([]);
 
-        // Setup schema factory with test schema
-        $this->schemaFactory = $this->createMock(GeneratedSchemaFactory::class);
-        $this->schemaFactory->expects($this->any())
-            ->method('createSchema')
-            ->willReturn(BuildSchema::build(self::TEST_SCHEMA));
+        // Create schema factory
+        $this->schemaFactory = new GeneratedSchemaFactory($this->config);
+
+        // Create generator config
+        $this->generatorConfig = new GeneratorConfig([
+            'entityConfig' => [
+                'namespace' => 'App\\GraphQL\\Entity',
+                'fileLocation' => $this->root->url() . '/src/Entity',
+                'templatePath' => dirname(__DIR__, 2) . '/templates/entity.php.template',
+            ],
+            'requestConfig' => [
+                'namespace' => 'App\\GraphQL\\Request',
+                'fileLocation' => $this->root->url() . '/src/Request',
+                'templatePath' => dirname(__DIR__, 2) . '/templates/request.php.template',
+            ],
+            'resolverConfig' => [
+                'namespace' => 'App\\GraphQL\\Resolver',
+                'fileLocation' => $this->root->getChild('src')->url(),
+                'templatePath' => dirname(__DIR__, 2) . '/templates/resolver.php.template',
+            ],
+            'typeMappings' => [
+                'ID' => 'string',
+                'String' => 'string',
+                'Int' => 'int',
+                'Float' => 'float',
+                'Boolean' => 'bool',
+            ],
+            'customTypes' => [],
+            'isImmutable' => true,
+            'hasStrictTypes' => true,
+        ]);
+
+        // Create schema analyzer
+        $analyzer = new AstSchemaAnalyzer($this->schemaFactory, new DefaultTypeMapper());
 
         // Setup resolver generator
         $this->generator = new ResolverGenerator(
-            $this->schemaFactory,
-            $this->root->getChild('src')->url(),
-            'App\GraphQL\Resolver',
-            new SimpleTemplateEngine()
+            $analyzer,
+            $this->generatorConfig,
+            new SimpleTemplateEngine(),
         );
     }
 
@@ -104,6 +142,7 @@ GRAPHQL;
 
         $expectedFiles = [
             'Query/UserResolver.php',
+            'Mutation/CreateUserResolver.php',
             'User/PostsResolver.php',
         ];
 
@@ -116,6 +155,7 @@ GRAPHQL;
     {
         $this->generator->generateAll();
 
+        // Test Query resolver
         $userResolver = file_get_contents(
             $this->root->getChild('src')->url() . '/Query/UserResolver.php'
         );
@@ -132,6 +172,25 @@ GRAPHQL;
         );
         $this->assertStringContainsString('@param array $args', $userResolver);
         $this->assertStringContainsString('- id: string', $userResolver);
+
+        // Test Mutation resolver
+        $createUserResolver = file_get_contents(
+            $this->root->getChild('src')->url() . '/Mutation/CreateUserResolver.php'
+        );
+
+        if ($createUserResolver === false) {
+            $this->fail('Failed to read create user resolver file');
+        }
+
+        $this->assertStringContainsString('namespace App\GraphQL\Resolver\Mutation', $createUserResolver);
+        $this->assertStringContainsString('class CreateUserResolver', $createUserResolver);
+        $this->assertStringContainsString(
+            'public function __invoke(mixed $objectValue, array $args, mixed $context): User|null',
+            $createUserResolver,
+        );
+        $this->assertStringContainsString('@param array $args', $createUserResolver);
+        $this->assertStringContainsString('- name: string', $createUserResolver);
+        $this->assertStringContainsString('- age: int|null', $createUserResolver);
     }
 
     public function testSkipsExistingResolvers(): void
@@ -146,108 +205,72 @@ GRAPHQL;
         $this->assertEquals($existingContent, file_get_contents($resolverPath));
     }
 
-    public function testThrowsExceptionOnSchemaCreationFailure(): void
+    public function testHandlesSchemaWithOnlyTypes(): void
     {
-        $this->schemaFactory->method('createSchema')
-            ->willThrowException(new \RuntimeException('Schema creation failed'));
-
-        $this->expectException(GeneratorException::class);
-        $this->expectExceptionMessage('Failed to create schema');
-
-        $this->generator->generateAll();
-    }
-
-
-    public function testGeneratesResolverWithDescriptionAndArgs(): void
-    {
-        $schema = <<<'GRAPHQL'
-        type Query {
-            "Get user by ID"
-            user(id: String!): User
+        $typesOnlySchema = <<<'GRAPHQL'
+        type User {
+            id: ID!
+            name: String!
         }
 
-        type User {
-            id: String!
+        type Post {
+            id: ID!
+            title: String!
         }
         GRAPHQL;
 
-        $this->schemaFactory = $this->createMock(GeneratedSchemaFactory::class);
-        $this->schemaFactory->expects($this->once())
+        // Create schema analyzer with types-only schema
+        $schemaFactory = $this->createMock(GeneratedSchemaFactory::class);
+        $schemaFactory->expects($this->once())
             ->method('createSchema')
-            ->willReturn(BuildSchema::build($schema));
+            ->willReturn(BuildSchema::build($typesOnlySchema));
 
-        $this->generator = new ResolverGenerator(
-            $this->schemaFactory,
-            $this->root->getChild('src')->url(),
-            'App\GraphQL\Resolver',
-            new SimpleTemplateEngine()
-        );
-
-        $this->generator->generateAll();
-
-        $resolverPath = $this->root->getChild('src')->url() . '/Query/UserResolver.php';
-        $content = file_get_contents($resolverPath);
-        $this->assertNotFalse($content, 'Failed to read resolver file');
-
-        $this->assertStringContainsString('Get user by ID', $content);
-        $this->assertStringContainsString('@param array $args', $content);
-        $this->assertStringContainsString('- id: string', $content);
-    }
-
-    public function testUsesCustomTemplatePath(): void
-    {
-        $customTemplate = <<<'PHP'
-<?php
-
-declare(strict_types=1);
-
-namespace {{namespace}};
-
-/**
- * {{description}}
- */
-class {{className}}
-{
-    public function __invoke(): {{returnType}}
-    {
-        // Custom template
-        return null;
-    }
-}
-PHP;
-
-        $templatePath = $this->root->url() . '/custom-template.php';
-        file_put_contents($templatePath, $customTemplate);
+        $analyzer = new AstSchemaAnalyzer($schemaFactory, new DefaultTypeMapper());
 
         $generator = new ResolverGenerator(
-            $this->schemaFactory,
-            $this->root->getChild('src')->url(),
-            'App\GraphQL\Resolver',
+            $analyzer,
+            $this->generatorConfig,
             new SimpleTemplateEngine(),
-            $templatePath
         );
 
+        $this->expectException(GeneratorException::class);
+        $this->expectExceptionMessage('No resolver requirements found in schema');
+
         $generator->generateAll();
-
-        $resolverPath = $this->root->getChild('src')->url() . '/Query/UserResolver.php';
-        $content = file_get_contents($resolverPath);
-        $this->assertNotFalse($content, 'Failed to read resolver file');
-
-        $this->assertStringContainsString('// Custom template', $content);
-        $this->assertStringContainsString('public function __invoke(): User|null', $content);
     }
 
     public function testThrowsExceptionOnMissingTemplate(): void
     {
+        // Create config with non-existent template
+        $config = new GeneratorConfig([
+            'entityConfig' => [
+                'namespace' => 'App\\GraphQL\\Entity',
+                'fileLocation' => $this->root->url() . '/src/Entity',
+                'templatePath' => dirname(__DIR__, 2) . '/templates/entity.php.template',
+            ],
+            'requestConfig' => [
+                'namespace' => 'App\\GraphQL\\Request',
+                'fileLocation' => $this->root->url() . '/src/Request',
+                'templatePath' => dirname(__DIR__, 2) . '/templates/request.php.template',
+            ],
+            'resolverConfig' => [
+                'namespace' => 'App\\GraphQL\\Resolver',
+                'fileLocation' => $this->root->getChild('src')->url(),
+                'templatePath' => '/non/existent/template.php',
+            ],
+            'typeMappings' => [],
+            'customTypes' => [],
+            'isImmutable' => true,
+            'hasStrictTypes' => true,
+        ]);
+
         $this->expectException(GeneratorException::class);
         $this->expectExceptionMessage('Template file not found');
 
         new ResolverGenerator(
-            $this->schemaFactory,
-            $this->root->getChild('src')->url(),
-            'App\GraphQL\Resolver',
+            new AstSchemaAnalyzer($this->schemaFactory, new DefaultTypeMapper()),
+            $config,
             new SimpleTemplateEngine(),
-            '/non/existent/template.php'
         );
     }
 }

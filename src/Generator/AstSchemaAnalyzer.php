@@ -132,14 +132,7 @@ class AstSchemaAnalyzer implements SchemaAnalyzerInterface
     {
         $types = [];
         foreach ($args as $arg) {
-            // For arguments, we want the base PHP type without nullability
-            // as PHP's type system handles nullability differently from GraphQL
-            $type = $arg->type;
-            while ($type instanceof NonNullTypeNode || $type instanceof ListTypeNode) {
-                $type = $type->type;
-            }
-            $baseType = $this->typeMapper->toPhpType($type->name->value);
-            $types[$arg->name->value] = $baseType;
+            $types[$arg->name->value] = $this->getTypeString($arg->type);
         }
         return $types;
     }
@@ -202,8 +195,33 @@ class AstSchemaAnalyzer implements SchemaAnalyzerInterface
         return false;
     }
 
-    private function isNonNullType(mixed $typeNode): bool
+    /**
+     * @return array<string, array{
+     *     name: string,
+     *     fields: array<string, string>,
+     *     description: string|null
+     * }>
+     */
+    public function getRequestRequirements(): array
     {
-        return $typeNode instanceof NonNullTypeNode;
+        $requirements = [];
+        foreach ($this->ast->definitions as $definition) {
+            if (!($definition instanceof \GraphQL\Language\AST\InputObjectTypeDefinitionNode)) {
+                continue;
+            }
+
+            $fields = [];
+            foreach ($definition->fields as $field) {
+                $fields[$field->name->value] = $this->getTypeString($field->type);
+            }
+
+            $requirements[$definition->name->value] = [
+                'name' => $definition->name->value,
+                'fields' => $fields,
+                'description' => $definition->description?->value,
+            ];
+        }
+
+        return $requirements;
     }
 }

@@ -13,21 +13,19 @@ use GraphQL\Middleware\Contract\TypeMapperInterface;
 use GraphQL\Middleware\Exception\GeneratorException;
 use GraphQL\Middleware\Factory\GeneratedSchemaFactory;
 use GraphQL\Middleware\Generator\DefaultTypeMapper;
+use GraphQL\Middleware\Config\GeneratorConfig;
 
 class ResolverGenerator
 {
-    private const DEFAULT_TEMPLATE_PATH = '/templates/resolver.php.template';
-
     private string $templatePath;
 
     public function __construct(
-        private readonly GeneratedSchemaFactory $schemaFactory,
-        private readonly string $outputDirectory,
-        private readonly string $namespace,
+        private readonly AstSchemaAnalyzer $schemaAnalyzer,
+        private readonly GeneratorConfig $config,
         private readonly TemplateEngineInterface $templateEngine,
-        ?string $templatePath = null,
     ) {
-        $this->templatePath = $templatePath ?? dirname(__DIR__, 2) . self::DEFAULT_TEMPLATE_PATH;
+        $resolverConfig = $config->getResolverConfig();
+        $this->templatePath = $resolverConfig->getTemplatePath();
         if (!file_exists($this->templatePath)) {
             throw new GeneratorException('Template file not found: ' . $this->templatePath);
         }
@@ -40,26 +38,7 @@ class ResolverGenerator
      */
     public function generateAll(): void
     {
-        try {
-            $schema = $this->schemaFactory->createSchema();
-        } catch (\Throwable $e) {
-            throw new GeneratorException('Failed to create schema', 0, $e);
-        }
-
-        try {
-            $schemaString = SchemaPrinter::doPrint($schema);
-        } catch (\Throwable $e) {
-            throw new GeneratorException('Failed to print schema', 0, $e);
-        }
-
-        try {
-            $document = Parser::parse($schemaString);
-        } catch (\Throwable $e) {
-            throw new GeneratorException('Failed to parse schema', 0, $e);
-        }
-
-        $analyzer = new AstSchemaAnalyzer($document, new DefaultTypeMapper());
-        $requirements = $analyzer->getResolverRequirements();
+        $requirements = $this->schemaAnalyzer->getResolverRequirements();
 
         if (empty($requirements)) {
             throw new GeneratorException('No resolver requirements found in schema');
@@ -72,7 +51,8 @@ class ResolverGenerator
 
     protected function generateResolver(array $requirement): void
     {
-        $typeDir = $this->outputDirectory . '/' . ucfirst($requirement['type']);
+        $resolverConfig = $this->config->getResolverConfig();
+        $typeDir = $resolverConfig->getFileLocation() . '/' . ucfirst($requirement['type']);
         $className = ucfirst($requirement['field']) . 'Resolver';
         $filePath = $typeDir . '/' . $className . '.php';
 
@@ -86,13 +66,22 @@ class ResolverGenerator
             throw new GeneratorException('Failed to read template file: ' . $this->templatePath);
         }
 
+        // Handle return type imports
+        $imports = [];
+        $returnType = $requirement['returnType'];
+        if (!in_array($returnType, ['string', 'int', 'float', 'bool', 'array'])) {
+            $baseType = str_replace('|null', '', $returnType);
+            $imports[] = "use App\\GraphQL\\Type\\{$baseType};";
+        }
+
         $content = $this->templateEngine->render(
             $template,
             [
-                'namespace' => $this->namespace . '\\' . ucfirst($requirement['type']),
+                'namespace' => $resolverConfig->getNamespace() . '\\' . ucfirst($requirement['type']),
                 'className' => $className,
                 'description' => $this->formatDescription($requirement),
-                'returnType' => $requirement['returnType'] . '|null',
+                'returnType' => $returnType,
+                'imports' => implode("\n", $imports),
             ]
         );
 
@@ -120,7 +109,12 @@ class ResolverGenerator
         if ($requirement['args']) {
             $description .= " *\n * @param array \$args\n";
             foreach ($requirement['args'] as $name => $type) {
-                $description .= " *   - $name: $type\n";
+                // Handle nullable types
+                if (str_ends_with($type, '|null')) {
+                    $description .= " *   - $name: $type\n";
+                } else {
+                    $description .= " *   - $name: $type\n";
+                }
             }
         }
 
