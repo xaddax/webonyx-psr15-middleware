@@ -1,0 +1,38 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ namespace }};
+
+use GraphQL\Middleware\Request\BaseRequest;
+
+{% if description %}
+/**
+ * {{ description }}
+ */
+{% endif %}
+class {{ className }} extends BaseRequest
+{
+{% for field, type in fields %}
+    private readonly {{ type }} ${{ field }};
+
+{% endfor %}
+    public function __construct(
+{% for field, type in fields %}
+        {{ type }} ${{ field }}{% if not loop.last %},{% endif %}
+
+{% endfor %}
+    ) {
+{% for field in fields|keys %}
+        $this->{{ field }} = ${{ field }};
+{% endfor %}
+    }
+
+{% for field, type in fields %}
+    public function get{{ field|pascal }}: {{ type }}
+    {
+        return $this->{{ field }};
+    }
+
+{% endfor %}
+} 
