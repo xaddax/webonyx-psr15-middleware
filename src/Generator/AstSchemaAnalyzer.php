@@ -224,4 +224,39 @@ class AstSchemaAnalyzer implements SchemaAnalyzerInterface
 
         return $requirements;
     }
+
+    /**
+     * @return array<string, array{
+     *     name: string,
+     *     fields: array<string, string>,
+     *     description: string|null
+     * }>
+     */
+    public function getEntityRequirements(): array
+    {
+        $requirements = [];
+        foreach ($this->ast->definitions as $definition) {
+            if (!($definition instanceof ObjectTypeDefinitionNode)) {
+                continue;
+            }
+
+            // Skip root operation types
+            if (in_array($definition->name->value, ['Query', 'Mutation', 'Subscription'])) {
+                continue;
+            }
+
+            $fields = [];
+            foreach ($definition->fields as $field) {
+                $fields[$field->name->value] = $this->getTypeString($field->type);
+            }
+
+            $requirements[$definition->name->value] = [
+                'name' => $definition->name->value,
+                'fields' => $fields,
+                'description' => $definition->description?->value,
+            ];
+        }
+
+        return $requirements;
+    }
 }

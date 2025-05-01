@@ -163,18 +163,69 @@ class GeneratorConfigTest extends TestCase
     }
 
     /**
-     * @return array<string, array{0: array<string, mixed>, 1: string}>
+     * @return array<string, array{array<string, mixed>, string}>
      */
     public static function invalidTypeMappingsProvider(): array
     {
         return [
             'non-string key' => [
                 ['123' => 'string'],
-                'Type mapping keys must be strings',
+                'Type mapping keys must be strings'
             ],
             'non-string value' => [
                 ['String' => 123],
-                'Type mapping values must be strings',
+                'Type mapping values must be strings'
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, array{array<string, mixed>, string}>
+     */
+    public static function invalidTypeMappingsProvider2(): array
+    {
+        return [
+            'non-string key' => [
+                ['123' => 'string'],
+                'Type mapping keys must be strings'
+            ],
+            'non-string value' => [
+                ['String' => 123],
+                'Type mapping values must be strings'
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, array{array<string, mixed>, string}>
+     */
+    public static function invalidTypeMappingsProvider3(): array
+    {
+        return [
+            'non-string key' => [
+                ['123' => 'string'],
+                'Type mapping keys must be strings'
+            ],
+            'non-string value' => [
+                ['String' => 123],
+                'Type mapping values must be strings'
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, array{array<string, mixed>, string}>
+     */
+    public static function invalidTypeMappingsProvider4(): array
+    {
+        return [
+            'non-string key' => [
+                ['123' => 'string'],
+                'Type mapping keys must be strings'
+            ],
+            'non-string value' => [
+                ['String' => 123],
+                'Type mapping values must be strings'
             ],
         ];
     }

@@ -15,15 +15,10 @@
             <directory>tests</directory>
         </testsuite>
     </testsuites>
-    <coverage>
-        <report>
-            <html outputDirectory="coverage"/>
-            <clover outputFile="coverage.xml"/>
-        </report>
-    </coverage>
     <source>
         <include>
             <directory>src</directory>
+            <file>bin/generate-resolvers</file>
         </include>
     </source>
 </phpunit>

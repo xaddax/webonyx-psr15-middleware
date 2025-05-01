@@ -7,8 +7,9 @@ namespace GraphQL\Middleware\Generator;
 use GraphQL\Middleware\Contract\TemplateEngineInterface;
 use GraphQL\Middleware\Exception\GeneratorException;
 use GraphQL\Middleware\Config\GeneratorConfig;
+use GraphQL\Middleware\Domain\BaseEntity;
 
-class RequestGenerator
+class EntityGenerator
 {
     private string $templatePath;
 
@@ -17,36 +18,36 @@ class RequestGenerator
         private readonly GeneratorConfig $config,
         private readonly TemplateEngineInterface $templateEngine,
     ) {
-        $requestConfig = $config->getRequestConfig();
-        $this->templatePath = $requestConfig->getTemplatePath();
+        $entityConfig = $config->getEntityConfig();
+        $this->templatePath = $entityConfig->getTemplatePath();
         if (!file_exists($this->templatePath)) {
             throw new GeneratorException('Template file not found: ' . $this->templatePath);
         }
     }
 
     /**
-     * Generate all required requests based on the schema
+     * Generate all required entities based on the schema
      *
      * @throws GeneratorException If schema analysis or generation fails
      */
     public function generateAll(): void
     {
-        $requirements = $this->schemaAnalyzer->getRequestRequirements();
+        $requirements = $this->schemaAnalyzer->getEntityRequirements();
 
         if (empty($requirements)) {
-            throw new GeneratorException('No request requirements found in schema');
+            throw new GeneratorException('No entity requirements found in schema');
         }
 
         foreach ($requirements as $requirement) {
-            $this->generateRequest($requirement);
+            $this->generateEntity($requirement);
         }
     }
 
-    protected function generateRequest(array $requirement): void
+    protected function generateEntity(array $requirement): void
     {
-        $requestConfig = $this->config->getRequestConfig();
+        $entityConfig = $this->config->getEntityConfig();
         $className = $requirement['name'];
-        $filePath = $requestConfig->getFileLocation() . '/' . $className . '.php';
+        $filePath = $entityConfig->getFileLocation() . '/' . $className . '.php';
 
         // Skip if file already exists
         if (@file_exists($filePath)) {
@@ -62,7 +63,7 @@ class RequestGenerator
         $content = $this->templateEngine->render(
             $template,
             [
-                'namespace' => $requestConfig->getNamespace(),
+                'namespace' => $entityConfig->getNamespace(),
                 'className' => $className,
                 'description' => $requirement['description'],
                 'fields' => $requirement['fields'],
@@ -80,7 +81,42 @@ class RequestGenerator
 
         // Try to write the file
         if (@file_put_contents($filePath, $content) === false) {
-            throw new GeneratorException('Failed to write request file: ' . $filePath);
+            throw new GeneratorException('Failed to write entity file: ' . $filePath);
         }
+    }
+
+    protected function generateEntityContent(string $className, array $fields): string
+    {
+        $entityConfig = $this->config->getEntityConfig();
+        return <<<PHP
+<?php
+
+declare(strict_types=1);
+
+namespace {$entityConfig->getNamespace()};
+
+use GraphQL\Middleware\Domain\BaseEntity;
+
+class {$className} extends BaseEntity
+{
+    public function __construct(
+        private readonly array \$data = []
+    ) {}
+
+    public function toArray(): array
+    {
+        return \$this->data;
+    }
+}
+PHP;
+    }
+
+    protected function hasCustomMethods(string $className): bool
+    {
+        // Check if class has any methods beyond those defined in BaseEntity
+        $baseMethods = get_class_methods(BaseEntity::class);
+        $classMethods = get_class_methods($className);
+
+        return !empty(array_diff($classMethods, $baseMethods));
     }
 }

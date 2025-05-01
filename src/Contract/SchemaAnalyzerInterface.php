@@ -18,4 +18,15 @@ interface SchemaAnalyzerInterface
      * }>
      */
     public function getResolverRequirements(): array;
+
+    /**
+     * Get all entity requirements from schema
+     *
+     * @return array<string, array{
+     *   name: string,
+     *   fields: array<string, string>,
+     *   description: string|null
+     * }>
+     */
+    public function getEntityRequirements(): array;
 }

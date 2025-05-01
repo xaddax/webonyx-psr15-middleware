@@ -13,7 +13,10 @@
   "config": {
     "sort-packages": true
   }, 
-  "bin": ["bin/generate-resolvers"],
+  "bin": [
+    "bin/generate-resolvers",
+    "bin/generate-entities"
+  ],
   "extra": {
     "class": "GraphQL\\Middleware\\Composer\\Plugin"
   },

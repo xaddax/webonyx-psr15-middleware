@@ -4,15 +4,8 @@ declare(strict_types=1);
 
 namespace GraphQL\Middleware\Generator;
 
-use GraphQL\Language\AST\DocumentNode;
-use GraphQL\Language\Parser;
-use GraphQL\Utils\SchemaPrinter;
-use GraphQL\Middleware\Contract\SchemaAnalyzerInterface;
 use GraphQL\Middleware\Contract\TemplateEngineInterface;
-use GraphQL\Middleware\Contract\TypeMapperInterface;
 use GraphQL\Middleware\Exception\GeneratorException;
-use GraphQL\Middleware\Factory\GeneratedSchemaFactory;
-use GraphQL\Middleware\Generator\DefaultTypeMapper;
 use GraphQL\Middleware\Config\GeneratorConfig;
 
 class ResolverGenerator
