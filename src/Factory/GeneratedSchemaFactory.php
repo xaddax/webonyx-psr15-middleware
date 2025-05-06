@@ -7,10 +7,10 @@ namespace GraphQL\Middleware\Factory;
 use GraphQL\Language\AST\DocumentNode;
 use GraphQL\Language\AST\Node;
 use GraphQL\Language\Parser;
+use GraphQL\Middleware\Config\SchemaConfig;
 use GraphQL\Type\Schema;
 use GraphQL\Utils\BuildSchema;
 use GraphQL\Utils\AST;
-use GraphQL\Middleware\Contract\SchemaConfigurationInterface;
 
 class GeneratedSchemaFactory
 {
@@ -22,7 +22,7 @@ class GeneratedSchemaFactory
     private array $schemaFiles = [];
 
     public function __construct(
-        private readonly SchemaConfigurationInterface $config
+        private readonly SchemaConfig $config
     ) {
         $this->cacheEnabled = $this->config->isCacheEnabled();
         $this->schemaDirectories = $this->config->getSchemaDirectories();
@@ -38,7 +38,12 @@ class GeneratedSchemaFactory
         if (!$source instanceof DocumentNode) {
             throw new \RuntimeException('Invalid source type');
         }
-        return BuildSchema::build($source);
+        return BuildSchema::build(
+            $source,
+            $this->config->getTypeConfigDecorator(),
+            $this->config->getSchemaOptions(),
+            $this->config->getFieldConfigDecorator(),
+        );
     }
 
     private function isCacheValid(): bool

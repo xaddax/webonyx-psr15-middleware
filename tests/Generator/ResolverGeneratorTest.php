@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace GraphQL\Middleware\Tests\Generator;
 
 use GraphQL\Language\Parser;
-use GraphQL\Middleware\Contract\SchemaConfigurationInterface;
+use GraphQL\Middleware\Config\SchemaConfig;
 use GraphQL\Middleware\Exception\GeneratorException;
 use GraphQL\Middleware\Factory\GeneratedSchemaFactory;
 use GraphQL\Middleware\Generator\ResolverGenerator;
@@ -48,7 +48,7 @@ type Post {
 GRAPHQL;
 
     private \org\bovigo\vfs\vfsStreamDirectory $root;
-    private SchemaConfigurationInterface&MockObject $config;
+    private SchemaConfig&MockObject $config;
     private GeneratedSchemaFactory $schemaFactory;
     private ResolverGenerator $generator;
     private GeneratorConfig $generatorConfig;
@@ -73,7 +73,7 @@ GRAPHQL;
         $cacheDir = vfsStream::newDirectory('cache')->at($this->root);
 
         // Set up schema configuration
-        $this->config = $this->createMock(SchemaConfigurationInterface::class);
+        $this->config = $this->createMock(SchemaConfig::class);
         $this->config->expects($this->any())
             ->method('getSchemaDirectories')
             ->willReturn([$schemaDir->url()]);

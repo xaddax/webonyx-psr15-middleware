@@ -6,7 +6,7 @@ namespace GraphQL\Middleware\Tests\Factory;
 
 use GraphQL\Type\Schema;
 use PHPUnit\Framework\TestCase;
-use GraphQL\Middleware\Contract\SchemaConfigurationInterface;
+use GraphQL\Middleware\Config\SchemaConfig;
 use GraphQL\Middleware\Factory\GeneratedSchemaFactory;
 
 class GeneratedSchemaFactoryTest extends TestCase
@@ -14,7 +14,7 @@ class GeneratedSchemaFactoryTest extends TestCase
     private const SCHEMA_DIR = __DIR__ . '/../Fixture/schema';
     private const CACHE_DIR = __DIR__ . '/../Fixture/cache';
     private GeneratedSchemaFactory $factory;
-    private SchemaConfigurationInterface&\PHPUnit\Framework\MockObject\MockObject $config;
+    private SchemaConfig&\PHPUnit\Framework\MockObject\MockObject $config;
 
     protected function setUp(): void
     {
@@ -25,7 +25,7 @@ class GeneratedSchemaFactoryTest extends TestCase
             mkdir(self::CACHE_DIR, 0777, true);
         }
 
-        $this->config = $this->createMock(SchemaConfigurationInterface::class);
+        $this->config = $this->createMock(SchemaConfig::class);
         $this->config->expects($this->any())->method('isCacheEnabled')->willReturn(true);
         $this->config->expects($this->any())->method('getSchemaDirectories')->willReturn([self::SCHEMA_DIR]);
         $this->config->expects($this->any())->method('getCacheDirectory')->willReturn(self::CACHE_DIR);
@@ -123,7 +123,7 @@ class GeneratedSchemaFactoryTest extends TestCase
 
         try {
             $this->config = $this
-                ->createMock(SchemaConfigurationInterface::class);
+                ->createMock(SchemaConfig::class);
             $this->config->expects($this->any())
                 ->method('isCacheEnabled')
                 ->willReturn(true);
@@ -157,7 +157,7 @@ class GeneratedSchemaFactoryTest extends TestCase
 
     public function testCreateSchemaWithoutCache(): void
     {
-        $this->config = $this->createMock(SchemaConfigurationInterface::class);
+        $this->config = $this->createMock(SchemaConfig::class);
         $this->config->expects($this->any())
             ->method('isCacheEnabled')
             ->willReturn(false);
@@ -207,7 +207,7 @@ class GeneratedSchemaFactoryTest extends TestCase
         chmod($unwritableDir, 0444);
 
         try {
-            $this->config = $this->createMock(SchemaConfigurationInterface::class);
+            $this->config = $this->createMock(SchemaConfig::class);
             $this->config->expects($this->any())
                 ->method('isCacheEnabled')
                 ->willReturn(true);

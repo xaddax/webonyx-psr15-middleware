@@ -65,14 +65,15 @@ $configuration = new DefaultConfiguration($config);
 | `resolver.namespace` | string | `'App\\GraphQL\\Resolver'` | Namespace for resolver classes |
 | `resolver.fallback_resolver` | callable\|null | `null` | Fallback resolver for fields without specific resolvers |
 
+# TODO: this has changed
 ## Custom Configuration
 
-You can create a custom configuration class by implementing `SchemaConfigurationInterface`:
+You can create a custom configuration class by implementing `SchemaConfig`:
 
 ```php
-use GraphQL\Middleware\Contract\SchemaConfigurationInterface;
+use GraphQL\Middleware\Config\SchemaConfig;
 
-class CustomConfiguration implements SchemaConfigurationInterface
+class CustomConfiguration implements SchemaConfig
 {
     public function isCacheEnabled(): bool
     {

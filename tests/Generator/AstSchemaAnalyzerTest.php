@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace GraphQL\Middleware\Tests\Generator;
 
 use GraphQL\Language\Parser;
-use GraphQL\Middleware\Contract\SchemaConfigurationInterface;
+use GraphQL\Middleware\Config\SchemaConfig;
 use GraphQL\Middleware\Generator\AstSchemaAnalyzer;
 use GraphQL\Middleware\Generator\DefaultTypeMapper;
 use GraphQL\Middleware\Factory\GeneratedSchemaFactory;
@@ -67,7 +67,7 @@ GRAPHQL;
     private AstSchemaAnalyzer $analyzer;
     private GeneratedSchemaFactory $schemaFactory;
     private DefaultTypeMapper $typeMapper;
-    private SchemaConfigurationInterface&MockObject $config;
+    private SchemaConfig&MockObject $config;
     private \org\bovigo\vfs\vfsStreamDirectory $root;
 
     protected function setUp(): void
@@ -83,7 +83,7 @@ GRAPHQL;
         $cacheDir = vfsStream::newDirectory('cache')->at($this->root);
 
         // Set up configuration
-        $this->config = $this->createMock(SchemaConfigurationInterface::class);
+        $this->config = $this->createMock(SchemaConfig::class);
         $this->config->expects($this->any())
             ->method('getSchemaDirectories')
             ->willReturn([$schemaDir->url()]);

@@ -2,11 +2,9 @@
 
 declare(strict_types=1);
 
-namespace GraphQL\Middleware\Configuration;
+namespace GraphQL\Middleware\Config;
 
-use GraphQL\Middleware\Contract\SchemaConfigurationInterface;
-
-class SchemaConfiguration implements SchemaConfigurationInterface
+class SchemaConfig
 {
     public function __construct(
         private readonly array $schemaDirectories,
@@ -15,18 +13,11 @@ class SchemaConfiguration implements SchemaConfigurationInterface
         private readonly string $directoryChangeFilename = 'directory-changes.php',
         private readonly string $schemaFilename = 'schema.php',
         private readonly array $parserOptions = [],
-        private readonly array $resolverConfig = []
+        private readonly array $resolverConfig = [],
+        private readonly mixed $typeConfigDecorator = null,
+        private readonly array $schemaOptions = [],
+        private readonly mixed $fieldConfigDecorator = null
     ) {
-    }
-
-    public function getSchemaDirectories(): array
-    {
-        return $this->schemaDirectories;
-    }
-
-    public function isCacheEnabled(): bool
-    {
-        return $this->cacheEnabled;
     }
 
     public function getCacheDirectory(): string
@@ -39,9 +30,9 @@ class SchemaConfiguration implements SchemaConfigurationInterface
         return $this->directoryChangeFilename;
     }
 
-    public function getSchemaFilename(): string
+    public function getFieldConfigDecorator(): callable|null
     {
-        return $this->schemaFilename;
+        return $this->fieldConfigDecorator;
     }
 
     public function getParserOptions(): array
@@ -55,5 +46,30 @@ class SchemaConfiguration implements SchemaConfigurationInterface
     public function getResolverConfig(): array
     {
         return $this->resolverConfig;
+    }
+
+    public function getSchemaDirectories(): array
+    {
+        return $this->schemaDirectories;
+    }
+
+    public function getSchemaFilename(): string
+    {
+        return $this->schemaFilename;
+    }
+
+    public function getSchemaOptions(): array
+    {
+        return $this->schemaOptions;
+    }
+
+    public function getTypeConfigDecorator(): callable|null
+    {
+        return $this->typeConfigDecorator;
+    }
+
+    public function isCacheEnabled(): bool
+    {
+        return $this->cacheEnabled;
     }
 }
