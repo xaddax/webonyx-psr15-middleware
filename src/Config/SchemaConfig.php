@@ -32,7 +32,7 @@ class SchemaConfig
 
     public function getFieldConfigDecorator(): callable|null
     {
-        return $this->fieldConfigDecorator;
+        return is_callable($this->fieldConfigDecorator) ? $this->fieldConfigDecorator : null;
     }
 
     public function getParserOptions(): array
@@ -65,7 +65,7 @@ class SchemaConfig
 
     public function getTypeConfigDecorator(): callable|null
     {
-        return $this->typeConfigDecorator;
+        return is_callable($this->typeConfigDecorator) ? $this->typeConfigDecorator : null;
     }
 
     public function isCacheEnabled(): bool
