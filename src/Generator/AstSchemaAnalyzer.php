@@ -16,8 +16,8 @@ use GraphQL\Language\AST\ScalarTypeDefinitionNode;
 use GraphQL\Language\AST\InterfaceTypeDefinitionNode;
 use GraphQL\Middleware\Contract\SchemaAnalyzerInterface;
 use GraphQL\Middleware\Contract\TypeMapperInterface;
-use GraphQL\Middleware\Factory\GeneratedSchemaFactory;
 use GraphQL\Middleware\Exception\GeneratorException;
+use GraphQL\Type\Schema;
 use GraphQL\Utils\SchemaPrinter;
 
 class AstSchemaAnalyzer implements SchemaAnalyzerInterface
@@ -25,11 +25,10 @@ class AstSchemaAnalyzer implements SchemaAnalyzerInterface
     private DocumentNode $ast;
 
     public function __construct(
-        private readonly GeneratedSchemaFactory $schemaFactory,
+        private readonly Schema $schema,
         private readonly TypeMapperInterface $typeMapper
     ) {
-        $schema = $this->schemaFactory->createSchema();
-        $sdl = SchemaPrinter::doPrint($schema);
+        $sdl = SchemaPrinter::doPrint($this->schema);
         $this->ast = Parser::parse($sdl);
 
         if (!$this->ast instanceof DocumentNode) {

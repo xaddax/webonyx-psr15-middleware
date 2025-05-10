@@ -11,29 +11,21 @@ use GraphQL\Middleware\Config\SchemaConfig;
 use GraphQL\Type\Schema;
 use GraphQL\Utils\BuildSchema;
 use GraphQL\Utils\AST;
+use Psr\Container\ContainerInterface;
 
 class GeneratedSchemaFactory
 {
-    private bool $cacheEnabled = false;
     private string $directoryChangeCacheFile;
-    private array $parserOptions;
+    private SchemaConfig $config;
     private string $schemaCacheFile;
-    private array $schemaDirectories;
     private array $schemaFiles = [];
 
-    public function __construct(
-        private readonly SchemaConfig $config
-    ) {
-        $this->cacheEnabled = $this->config->isCacheEnabled();
-        $this->schemaDirectories = $this->config->getSchemaDirectories();
-        $cacheDirectory = $this->config->getCacheDirectory();
-        $this->directoryChangeCacheFile = $cacheDirectory . '/' . $this->config->getDirectoryChangeFilename();
-        $this->schemaCacheFile = $cacheDirectory . '/' . $this->config->getSchemaFilename();
-        $this->parserOptions = $this->config->getParserOptions();
-    }
-
-    public function createSchema(): Schema
+    public function __invoke(ContainerInterface $container): Schema
     {
+        $this->config = $container->get(SchemaConfig::class);
+
+        $this->setFilesFromConfig($this->config);
+
         $source = $this->getSourceAST();
         if (!$source instanceof DocumentNode) {
             throw new \RuntimeException('Invalid source type');
@@ -49,7 +41,7 @@ class GeneratedSchemaFactory
     private function isCacheValid(): bool
     {
         return
-            $this->cacheEnabled &&
+            $this->config->isCacheEnabled() &&
             !$this->isDirectoryChangeDetected() &&
             file_exists($this->schemaCacheFile);
     }
@@ -75,20 +67,20 @@ class GeneratedSchemaFactory
     {
         $source = $this->readGraphQLFiles();
 
-        return Parser::parse($source, $this->parserOptions);
+        return Parser::parse($source, $this->config->getParserOptions());
     }
 
     private function getSourceAST(): Node
     {
         // the directories need to be scanned for both cache checking
         // and source building, so do it before anything else
-        $this->scanDirectories($this->schemaDirectories);
+        $this->scanDirectories($this->config->getSchemaDirectories());
 
         if ($this->isCacheValid()) {
             return $this->readSourceASTFromCache();
         }
         $source = $this->buildSourceAST();
-        if ($this->cacheEnabled) {
+        if ($this->config->isCacheEnabled()) {
             $this->writeSourceASTToCache($source);
             $this->writeDirectoryChangeCache();
         }
@@ -110,6 +102,13 @@ class GeneratedSchemaFactory
     private function readSourceASTFromCache(): Node
     {
         return AST::fromArray(require $this->schemaCacheFile);
+    }
+
+    private function setFilesFromConfig(SchemaConfig $config): void
+    {
+        $cacheDirectory = $this->config->getCacheDirectory();
+        $this->directoryChangeCacheFile = $cacheDirectory . '/' . $this->config->getDirectoryChangeFilename();
+        $this->schemaCacheFile = $cacheDirectory . '/' . $this->config->getSchemaFilename();
     }
 
     private function writeDirectoryChangeCache(): void
@@ -163,8 +162,9 @@ class GeneratedSchemaFactory
     protected function getSchemaFiles(): array
     {
         if (empty($this->schemaFiles)) {
-            $this->scanDirectories($this->schemaDirectories);
+            $this->scanDirectories($this->config->getSchemaDirectories());
         }
+
         return array_keys($this->schemaFiles);
     }
 }

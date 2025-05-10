@@ -5,14 +5,13 @@ declare(strict_types=1);
 namespace GraphQL\Middleware\Factory;
 
 use GraphQL\Middleware\Contract\ResolverInterface;
-use GraphQL\Middleware\Tests\TestCase;
 use Psr\Container\ContainerInterface;
 
 class ResolverFactory
 {
     public function __construct(
         private readonly ContainerInterface $container,
-        private readonly string $resolverNamespace = 'App\GraphQL\Resolver'
+        private readonly string $resolverNamespace = 'Application\GraphQL\Resolver'
     ) {
     }
 
