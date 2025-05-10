@@ -65,7 +65,7 @@ input UserInput {
 GRAPHQL;
 
     private AstSchemaAnalyzer $analyzer;
-    private GeneratedSchemaFactory $schemaFactory;
+    private Schema $schema;
     private DefaultTypeMapper $typeMapper;
     private SchemaConfig&MockObject $config;
     private \org\bovigo\vfs\vfsStreamDirectory $root;
@@ -104,8 +104,8 @@ GRAPHQL;
             ->willReturn([]);
 
         $this->typeMapper = new DefaultTypeMapper();
-        $this->schemaFactory = new GeneratedSchemaFactory($this->config);
-        $this->analyzer = new AstSchemaAnalyzer($this->schemaFactory, $this->typeMapper);
+        $this->schema = \GraphQL\Utils\BuildSchema::build(self::TEST_SCHEMA);
+        $this->analyzer = new AstSchemaAnalyzer($this->schema, $this->typeMapper);
     }
 
     public function testGetResolverRequirements(): void
@@ -203,11 +203,8 @@ GRAPHQL;
         file_put_contents($schemaPath, $schema);
 
         // Create new analyzer with the complex schema
-        $this->config->expects($this->any())
-            ->method('getSchemaDirectories')
-            ->willReturn([$this->root->getChild('schema')->url()]);
-        $schemaFactory = new GeneratedSchemaFactory($this->config);
-        $analyzer = new AstSchemaAnalyzer($schemaFactory, $this->typeMapper);
+        $newSchema = \GraphQL\Utils\BuildSchema::build($schema);
+        $analyzer = new AstSchemaAnalyzer($newSchema, $this->typeMapper);
 
         $requirements = $analyzer->getRequestRequirements();
 
@@ -262,11 +259,8 @@ GRAPHQL;
         $schemaPath = $this->root->getChild('schema')->url() . '/empty-schema.graphql';
         file_put_contents($schemaPath, $schema);
 
-        $this->config->expects($this->any())
-            ->method('getSchemaDirectories')
-            ->willReturn([$this->root->getChild('schema')->url()]);
-        $schemaFactory = new GeneratedSchemaFactory($this->config);
-        $analyzer = new AstSchemaAnalyzer($schemaFactory, $this->typeMapper);
+        $newSchema = \GraphQL\Utils\BuildSchema::build($schema);
+        $analyzer = new AstSchemaAnalyzer($newSchema, $this->typeMapper);
 
         $requirements = $analyzer->getRequestRequirements();
         $this->assertArrayHasKey('EmptyInput', $requirements);
@@ -279,11 +273,7 @@ GRAPHQL;
         $this->expectException(\GraphQL\Error\SyntaxError::class);
         $this->expectExceptionMessage('Syntax Error: Unexpected <EOF>');
 
-        $mockSchemaFactory = $this->createMock(GeneratedSchemaFactory::class);
-        $mockSchemaFactory->expects($this->once())
-            ->method('createSchema')
-            ->willReturn(new \GraphQL\Type\Schema([]));
-
-        new AstSchemaAnalyzer($mockSchemaFactory, $this->typeMapper);
+        $schema = new \GraphQL\Type\Schema([]);
+        new AstSchemaAnalyzer($schema, $this->typeMapper);
     }
 }

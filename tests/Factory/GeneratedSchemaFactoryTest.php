@@ -8,6 +8,7 @@ use GraphQL\Type\Schema;
 use PHPUnit\Framework\TestCase;
 use GraphQL\Middleware\Config\SchemaConfig;
 use GraphQL\Middleware\Factory\GeneratedSchemaFactory;
+use Test\Fixture\TestContainer;
 
 class GeneratedSchemaFactoryTest extends TestCase
 {
@@ -15,6 +16,7 @@ class GeneratedSchemaFactoryTest extends TestCase
     private const CACHE_DIR = __DIR__ . '/../Fixture/cache';
     private GeneratedSchemaFactory $factory;
     private SchemaConfig&\PHPUnit\Framework\MockObject\MockObject $config;
+    private TestContainer $container;
 
     protected function setUp(): void
     {
@@ -36,7 +38,10 @@ class GeneratedSchemaFactoryTest extends TestCase
         $this->config->expects($this->any())->method('getSchemaFilename')->willReturn('schema-cache.php');
         $this->config->expects($this->any())->method('getParserOptions')->willReturn([]);
 
-        $this->factory = new GeneratedSchemaFactory($this->config);
+        $this->factory = new GeneratedSchemaFactory();
+        $this->container = new TestContainer([
+            SchemaConfig::class => $this->config,
+        ]);
     }
 
     protected function tearDown(): void
@@ -55,7 +60,7 @@ class GeneratedSchemaFactoryTest extends TestCase
 
     public function testCreatesSchemaSuccessfully(): void
     {
-        $schema = $this->factory->createSchema();
+        $schema = ($this->factory)($this->container);
         $this->assertInstanceOf(Schema::class, $schema);
     }
 
@@ -64,7 +69,7 @@ class GeneratedSchemaFactoryTest extends TestCase
         $cacheFile = self::CACHE_DIR . '/schema-cache.php';
         $this->assertFileDoesNotExist($cacheFile);
 
-        $this->factory->createSchema();
+        ($this->factory)($this->container);
 
         $this->assertFileExists($cacheFile);
     }
@@ -72,7 +77,7 @@ class GeneratedSchemaFactoryTest extends TestCase
     public function testUsesExistingCacheFile(): void
     {
         // Create schema to generate cache
-        $this->factory->createSchema();
+        ($this->factory)($this->container);
 
         // Get cache file modification time
         $cacheFile = self::CACHE_DIR . '/schema-cache.php';
@@ -82,7 +87,7 @@ class GeneratedSchemaFactoryTest extends TestCase
         sleep(1);
 
         // Create schema again
-        $this->factory->createSchema();
+        ($this->factory)($this->container);
 
         // Cache file should not have been modified
         $this->assertEquals($firstMTime, filemtime($cacheFile));
@@ -91,7 +96,7 @@ class GeneratedSchemaFactoryTest extends TestCase
     public function testHandlesDirectoryChanges(): void
     {
         // Create schema to generate cache
-        $this->factory->createSchema();
+        ($this->factory)($this->container);
 
         // Get cache file modification time
         $cacheFile = self::CACHE_DIR . '/schema-cache.php';
@@ -106,7 +111,7 @@ class GeneratedSchemaFactoryTest extends TestCase
 
         try {
             // Create schema again
-            $this->factory->createSchema();
+            ($this->factory)($this->container);
 
             // Cache file should have been modified
             $this->assertGreaterThan($firstMTime, filemtime($cacheFile));
@@ -147,8 +152,11 @@ class GeneratedSchemaFactoryTest extends TestCase
                 ->method('getParserOptions')
                 ->willReturn([]);
 
-            $factory = new GeneratedSchemaFactory($this->config);
-            $schema = $factory->createSchema();
+            $factory = new GeneratedSchemaFactory();
+            $container = new TestContainer([
+                SchemaConfig::class => $this->config,
+            ]);
+            $schema = $factory($container);
             $this->assertInstanceOf(Schema::class, $schema);
         } finally {
             unlink($schemaFile);
@@ -177,8 +185,11 @@ class GeneratedSchemaFactoryTest extends TestCase
             ->method('getParserOptions')
             ->willReturn([]);
 
-        $factory = new GeneratedSchemaFactory($this->config);
-        $schema = $factory->createSchema();
+        $factory = new GeneratedSchemaFactory();
+        $container = new TestContainer([
+            SchemaConfig::class => $this->config,
+        ]);
+        $schema = $factory($container);
         $this->assertInstanceOf(Schema::class, $schema);
 
         $cacheFile = self::CACHE_DIR . '/schema-cache.php';
@@ -192,7 +203,7 @@ class GeneratedSchemaFactoryTest extends TestCase
 
         try {
             $this->expectException(\GraphQL\Error\SyntaxError::class);
-            $this->factory->createSchema();
+            ($this->factory)($this->container);
         } finally {
             unlink($schemaFile);
         }
@@ -227,8 +238,11 @@ class GeneratedSchemaFactoryTest extends TestCase
                 ->method('getParserOptions')
                 ->willReturn([]);
 
-            $factory = new GeneratedSchemaFactory($this->config);
-            $schema = $factory->createSchema();
+            $factory = new GeneratedSchemaFactory();
+            $container = new TestContainer([
+                SchemaConfig::class => $this->config,
+            ]);
+            $schema = $factory($container);
             $this->assertInstanceOf(Schema::class, $schema);
         } finally {
             chmod($unwritableDir, 0777);
@@ -241,7 +255,7 @@ class GeneratedSchemaFactoryTest extends TestCase
         $dirCacheFile = self::CACHE_DIR . '/schema-directory-cache.php';
         file_put_contents($dirCacheFile, "<?php\nreturn ['test' => 123];\n");
 
-        $schema = $this->factory->createSchema();
+        $schema = ($this->factory)($this->container);
         $this->assertInstanceOf(Schema::class, $schema);
     }
 }

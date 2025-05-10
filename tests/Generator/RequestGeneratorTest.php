@@ -384,10 +384,7 @@ GRAPHQL;
 
     public function testSchemaAnalysis(): void
     {
-        // Return a real Schema object, not a DocumentNode
         $schema = \GraphQL\Utils\BuildSchema::build(self::TEST_SCHEMA);
-        $this->schemaFactory->method('createSchema')
-            ->willReturn($schema);
         // Mock typeMapper to return correct PHP types
         $this->typeMapper->method('toPhpType')
             ->willReturnMap([
@@ -395,7 +392,7 @@ GRAPHQL;
                 ['Boolean', 'bool'],
             ]);
 
-        $analyzer = new AstSchemaAnalyzer($this->schemaFactory, $this->typeMapper);
+        $analyzer = new AstSchemaAnalyzer($schema, $this->typeMapper);
         $requirements = $analyzer->getRequestRequirements();
 
         $this->assertNotEmpty($requirements);

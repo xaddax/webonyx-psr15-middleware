@@ -126,7 +126,8 @@ GRAPHQL;
         ]);
 
         // Create schema analyzer
-        $analyzer = new AstSchemaAnalyzer($this->schemaFactory, new DefaultTypeMapper());
+        $schema = \GraphQL\Utils\BuildSchema::build(self::TEST_SCHEMA);
+        $analyzer = new AstSchemaAnalyzer($schema, new DefaultTypeMapper());
 
         // Setup resolver generator
         $this->generator = new ResolverGenerator(
@@ -220,12 +221,8 @@ GRAPHQL;
         GRAPHQL;
 
         // Create schema analyzer with types-only schema
-        $schemaFactory = $this->createMock(GeneratedSchemaFactory::class);
-        $schemaFactory->expects($this->once())
-            ->method('createSchema')
-            ->willReturn(BuildSchema::build($typesOnlySchema));
-
-        $analyzer = new AstSchemaAnalyzer($schemaFactory, new DefaultTypeMapper());
+        $schema = \GraphQL\Utils\BuildSchema::build($typesOnlySchema);
+        $analyzer = new AstSchemaAnalyzer($schema, new DefaultTypeMapper());
 
         $generator = new ResolverGenerator(
             $analyzer,
@@ -267,8 +264,9 @@ GRAPHQL;
         $this->expectException(GeneratorException::class);
         $this->expectExceptionMessage('Template file not found');
 
+        $schema = \GraphQL\Utils\BuildSchema::build(self::TEST_SCHEMA);
         new ResolverGenerator(
-            new AstSchemaAnalyzer($this->schemaFactory, new DefaultTypeMapper()),
+            new AstSchemaAnalyzer($schema, new DefaultTypeMapper()),
             $config,
             new SimpleTemplateEngine(),
         );

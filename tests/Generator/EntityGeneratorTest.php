@@ -137,9 +137,8 @@ GRAPHQL;
 
     public function testSchemaAnalysis(): void
     {
-        // Return a real Schema object, not a DocumentNode
         $schema = \GraphQL\Utils\BuildSchema::build(self::TEST_SCHEMA);
-        $this->schemaFactory->method('createSchema')
+        $this->schemaFactory->method('__invoke')
             ->willReturn($schema);
         // Mock typeMapper to return correct PHP types
         $this->typeMapper->method('toPhpType')
@@ -155,7 +154,7 @@ GRAPHQL;
                 }
             });
 
-        $analyzer = new AstSchemaAnalyzer($this->schemaFactory, $this->typeMapper);
+        $analyzer = new AstSchemaAnalyzer($schema, $this->typeMapper);
         $requirements = $analyzer->getEntityRequirements();
 
         $this->assertNotEmpty($requirements);
