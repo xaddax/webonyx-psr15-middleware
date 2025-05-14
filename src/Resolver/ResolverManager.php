@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace GraphQL\Middleware\Resolver;
 
+use GraphQL\Language\AST\FieldDefinitionNode;
+use GraphQL\Language\AST\ObjectTypeDefinitionNode;
 use GraphQL\Language\AST\TypeDefinitionNode;
 use GraphQL\Middleware\Factory\ResolverFactory;
 use GraphQL\Type\Definition\ResolveInfo;
@@ -14,8 +16,7 @@ class ResolverManager
         private readonly ResolverFactory $resolverFactory,
         /** @var callable|null */
         private readonly mixed $fallbackResolver = null,
-    ) {
-    }
+    ) {}
 
     /**
      * Creates a type config decorator for schema building
@@ -48,6 +49,35 @@ class ResolverManager
             }
 
             return $typeConfig;
+        };
+    }
+
+    public function createFieldConfigDecorator(): callable
+    {
+        return function (array $fieldConfig, FieldDefinitionNode $fieldDefinitionNode, ObjectTypeDefinitionNode $node): array {
+            $fieldConfig['resolve'] = function ($source, $args, $context, ResolveInfo $info) use ($fieldDefinitionNode, $node) {
+                $operationName = $this->formatOperationName($info->fieldName);
+                
+                /** @var mixed $resolver */
+                $resolver = $this->resolverFactory->createResolver($operationName);
+                
+                if ($resolver !== null) {
+                    if (!is_callable($resolver)) {
+                        throw new \RuntimeException("Resolver for {$operationName} is not callable");
+                    }
+                    return call_user_func($resolver, $source, $args, $context, $info);
+                }
+                
+                // Fall back to default resolver if provided
+                if ($this->fallbackResolver) {
+                    return ($this->fallbackResolver)($source, $args, $context, $info);
+                }
+                
+                // Use webonyx default resolver as last resort
+                return null;
+            };
+
+            return $fieldConfig;
         };
     }
 
