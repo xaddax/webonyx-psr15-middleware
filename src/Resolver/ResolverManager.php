@@ -56,14 +56,13 @@ class ResolverManager
     {
         return function (array $fieldConfig, FieldDefinitionNode $fieldDefinitionNode, ObjectTypeDefinitionNode $node): array {
             $fieldConfig['resolve'] = function ($source, $args, $context, ResolveInfo $info) use ($fieldDefinitionNode, $node) {
-                $operationName = $this->formatOperationName($info->fieldName);
                 
                 /** @var mixed $resolver */
-                $resolver = $this->resolverFactory->createResolver($operationName);
+                $resolver = $this->resolverFactory->createResolver($info);
                 
                 if ($resolver !== null) {
                     if (!is_callable($resolver)) {
-                        throw new \RuntimeException("Resolver for {$operationName} is not callable");
+                        throw new \RuntimeException("Resolver for {$info->fieldName} is not callable");
                     }
                     return call_user_func($resolver, $source, $args, $context, $info);
                 }
@@ -79,11 +78,5 @@ class ResolverManager
 
             return $fieldConfig;
         };
-    }
-
-    private function formatOperationName(string $fieldName): string
-    {
-        // Convert camelCase to PascalCase
-        return str_replace(' ', '', ucwords(str_replace('_', ' ', $fieldName)));
     }
 }

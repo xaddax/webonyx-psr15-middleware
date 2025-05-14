@@ -12,7 +12,7 @@ use GraphQL\Middleware\Contract\ResolverInterface;
  */
 class {{className}} implements ResolverInterface
 {
-    public function __invoke(mixed $objectValue, array $args, mixed $context): {{returnType}}
+    public function __invoke($source, array $args, $context, ResolveInfo $info): mixed;
     {
         // TODO: Implement resolver
         return null;
