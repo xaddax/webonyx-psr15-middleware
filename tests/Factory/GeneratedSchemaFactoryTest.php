@@ -202,7 +202,7 @@ class GeneratedSchemaFactoryTest extends TestCase
         file_put_contents($schemaFile, 'type InvalidType Query');
 
         try {
-            $this->expectException(\GraphQL\Error\SyntaxError::class);
+            $this->expectException(\RuntimeException::class);
             ($this->factory)($this->container);
         } finally {
             unlink($schemaFile);

@@ -6,7 +6,7 @@ namespace GraphQL\Middleware\Tests\Generator;
 
 use GraphQL\Middleware\Contract\TemplateEngineInterface;
 use GraphQL\Middleware\Contract\TypeMapperInterface;
-use GraphQL\Middleware\Factory\GeneratedSchemaFactory;
+// Removed unused import
 use GraphQL\Middleware\Generator\AstSchemaAnalyzer;
 use GraphQL\Middleware\Generator\RequestGenerator;
 use GraphQL\Middleware\Config\GeneratorConfig;
@@ -29,7 +29,7 @@ GRAPHQL;
     private TemplateEngineInterface&MockObject $templateEngine;
     private AstSchemaAnalyzer&MockObject $schemaAnalyzer;
     private GeneratorConfig&MockObject $config;
-    private GeneratedSchemaFactory&MockObject $schemaFactory;
+    // Removed unused property
     private TypeMapperInterface&MockObject $typeMapper;
 
     protected function setUp(): void
@@ -66,8 +66,7 @@ GRAPHQL;
         // Mock schema analyzer
         $this->schemaAnalyzer = $this->createMock(AstSchemaAnalyzer::class);
 
-        // Mock schema factory and type mapper
-        $this->schemaFactory = $this->createMock(GeneratedSchemaFactory::class);
+        // Mock type mapper
         $this->typeMapper = $this->createMock(TypeMapperInterface::class);
 
         // Set up configuration

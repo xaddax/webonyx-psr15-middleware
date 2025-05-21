@@ -11,7 +11,7 @@ class ResolverFactory
 {
     public function __construct(
         private readonly ContainerInterface $container,
-        private readonly string $resolverNamespace = 'Application\GraphQL\Resolver'
+        private readonly string $resolverNamespace = 'App\GraphQL\Resolver'
     ) {
     }
 

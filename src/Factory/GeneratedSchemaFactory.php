@@ -7,7 +7,9 @@ namespace GraphQL\Middleware\Factory;
 use GraphQL\Language\AST\DocumentNode;
 use GraphQL\Language\AST\Node;
 use GraphQL\Language\Parser;
+use GraphQL\Language\Source;
 use GraphQL\Middleware\Config\SchemaConfig;
+use GraphQL\Middleware\Schema\SchemaMerger;
 use GraphQL\Type\Schema;
 use GraphQL\Utils\BuildSchema;
 use GraphQL\Utils\AST;
@@ -22,9 +24,11 @@ class GeneratedSchemaFactory
 
     public function __invoke(ContainerInterface $container): Schema
     {
-        $this->config = $container->get(SchemaConfig::class);
+        /** @var SchemaConfig $config */
+        $config = $container->get(SchemaConfig::class);
+        $this->config = $config;
 
-        $this->setFilesFromConfig($this->config);
+        $this->setFilesFromConfig($config);
 
         $source = $this->getSourceAST();
         if (!$source instanceof DocumentNode) {
@@ -65,7 +69,7 @@ class GeneratedSchemaFactory
 
     private function buildSourceAST(): DocumentNode
     {
-        $source = $this->readGraphQLFiles();
+        $source = $this->parseGraphQLFiles();
 
         return Parser::parse($source, $this->config->getParserOptions());
     }
@@ -88,15 +92,11 @@ class GeneratedSchemaFactory
         return $source;
     }
 
-    private function readGraphQLFiles(): string
+    private function parseGraphQLFiles(): Source
     {
-        $source = '';
         $schemaFiles = array_keys($this->schemaFiles);
-        foreach ($schemaFiles as $file) {
-            $source .= file_get_contents($file);
-        }
 
-        return $source;
+        return (new SchemaMerger())->merge($schemaFiles);
     }
 
     private function readSourceASTFromCache(): Node
@@ -106,9 +106,9 @@ class GeneratedSchemaFactory
 
     private function setFilesFromConfig(SchemaConfig $config): void
     {
-        $cacheDirectory = $this->config->getCacheDirectory();
-        $this->directoryChangeCacheFile = $cacheDirectory . '/' . $this->config->getDirectoryChangeFilename();
-        $this->schemaCacheFile = $cacheDirectory . '/' . $this->config->getSchemaFilename();
+        $cacheDirectory = $config->getCacheDirectory();
+        $this->directoryChangeCacheFile = $cacheDirectory . '/' . $config->getDirectoryChangeFilename();
+        $this->schemaCacheFile = $cacheDirectory . '/' . $config->getSchemaFilename();
     }
 
     private function writeDirectoryChangeCache(): void

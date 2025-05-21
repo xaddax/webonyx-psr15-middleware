@@ -4,14 +4,10 @@ declare(strict_types=1);
 
 namespace GraphQL\Middleware\Tests\Generator;
 
-use GraphQL\Language\Parser;
 use GraphQL\Middleware\Config\SchemaConfig;
 use GraphQL\Middleware\Exception\GeneratorException;
-use GraphQL\Middleware\Factory\GeneratedSchemaFactory;
 use GraphQL\Middleware\Generator\ResolverGenerator;
 use GraphQL\Middleware\Generator\SimpleTemplateEngine;
-use GraphQL\Type\Schema;
-use GraphQL\Utils\BuildSchema;
 use org\bovigo\vfs\vfsStream;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -49,7 +45,6 @@ GRAPHQL;
 
     private \org\bovigo\vfs\vfsStreamDirectory $root;
     private SchemaConfig&MockObject $config;
-    private GeneratedSchemaFactory $schemaFactory;
     private ResolverGenerator $generator;
     private GeneratorConfig $generatorConfig;
 
@@ -93,8 +88,7 @@ GRAPHQL;
             ->method('getParserOptions')
             ->willReturn([]);
 
-        // Create schema factory
-        $this->schemaFactory = new GeneratedSchemaFactory($this->config);
+        // Removed schema factory creation
 
         // Create generator config
         $this->generatorConfig = new GeneratorConfig([
