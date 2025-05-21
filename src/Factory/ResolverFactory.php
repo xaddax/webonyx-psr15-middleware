@@ -16,15 +16,27 @@ class ResolverFactory
     ) {
     }
 
-    public function createResolver(ResolveInfo $resolveInfo): ?ResolverInterface
+    /**
+     * @param string|ResolveInfo $operationName Either a string operation name or a ResolveInfo object
+     */
+    public function createResolver(string|ResolveInfo $operationName): ?ResolverInterface
     {
-        // Try operation-specific resolver first
-        $resolverClass = sprintf(
-            '%s\\%s\\%sResolver',
-            $this->resolverNamespace,
-            $this->getTypeName($resolveInfo),
-            $this->getOperationName($resolveInfo),
-        );
+        if ($operationName instanceof ResolveInfo) {
+            // Handle ResolveInfo object
+            $resolverClass = sprintf(
+                '%s\\%s\\%sResolver',
+                $this->resolverNamespace,
+                $this->getTypeName($operationName),
+                $this->getOperationName($operationName),
+            );
+        } else {
+            // Handle string operation name (for backward compatibility)
+            $resolverClass = sprintf(
+                '%s\\%sResolver',
+                $this->resolverNamespace,
+                $operationName
+            );
+        }
 
         if (class_exists($resolverClass)) {
             /** @var ResolverInterface */

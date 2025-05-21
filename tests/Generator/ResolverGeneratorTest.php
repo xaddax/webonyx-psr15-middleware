@@ -162,7 +162,7 @@ GRAPHQL;
         $this->assertStringContainsString('namespace App\GraphQL\Resolver\Query', $userResolver);
         $this->assertStringContainsString('class UserResolver', $userResolver);
         $this->assertStringContainsString(
-            'public function __invoke(mixed $objectValue, array $args, mixed $context): User|null',
+            'public function __invoke($source, array $args, $context, ResolveInfo $info): mixed',
             $userResolver,
         );
         $this->assertStringContainsString('@param array $args', $userResolver);
@@ -180,7 +180,7 @@ GRAPHQL;
         $this->assertStringContainsString('namespace App\GraphQL\Resolver\Mutation', $createUserResolver);
         $this->assertStringContainsString('class CreateUserResolver', $createUserResolver);
         $this->assertStringContainsString(
-            'public function __invoke(mixed $objectValue, array $args, mixed $context): User|null',
+            'public function __invoke($source, array $args, $context, ResolveInfo $info): mixed',
             $createUserResolver,
         );
         $this->assertStringContainsString('@param array $args', $createUserResolver);
