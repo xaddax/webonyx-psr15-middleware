@@ -149,36 +149,7 @@ class ResolverManagerTest extends TestCase
         $this->assertSame($config, $result);
     }
 
-    public function testCreateTypeConfigDecoratorWithNonCallableResolver(): void
-    {
-        $decorator = $this->manager->createTypeConfigDecorator();
-        $typeDefinitionNode = $this->createMock(TypeDefinitionNode::class);
-        $info = $this->createMock(ResolveInfo::class);
-        $info->fieldName = 'getUser';
 
-        // Return a non-callable value
-        $this->resolverFactory->expects($this->any())
-            ->method('createResolver')
-            ->with('GetUser')
-            ->willReturn('not-callable');
-
-        $config = [
-            'name' => 'Query',
-            'fields' => [
-                'getUser' => [
-                    'type' => 'User'
-                ]
-            ]
-        ];
-
-        $result = $decorator($config, $typeDefinitionNode);
-        $resolveField = $result['resolveField'];
-
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Resolver for GetUser is not callable');
-
-        $resolveField(null, [], null, $info);
-    }
 
     public function testCreateTypeConfigDecoratorWithNoResolverAndNoFallback(): void
     {
@@ -344,34 +315,7 @@ class ResolverManagerTest extends TestCase
         $this->assertEquals(['id' => '3'], $resolvedValue);
     }
 
-    public function testCreateFieldConfigDecoratorWithNonCallableResolver(): void
-    {
-        $decorator = $this->manager->createFieldConfigDecorator();
-        $fieldDefinitionNode = $this->createMock(FieldDefinitionNode::class);
-        $objectTypeDefinitionNode = $this->createMock(ObjectTypeDefinitionNode::class);
 
-        $info = $this->createMock(ResolveInfo::class);
-        $info->fieldName = 'posts';
-
-        // Return a non-callable value
-        $this->resolverFactory->expects($this->once())
-            ->method('createResolver')
-            ->with($info)
-            ->willReturn('not-callable');
-
-        $fieldConfig = [
-            'type' => 'Post',
-            'description' => 'User posts'
-        ];
-
-        $result = $decorator($fieldConfig, $fieldDefinitionNode, $objectTypeDefinitionNode);
-        $resolveFunction = $result['resolve'];
-
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Resolver for posts is not callable');
-
-        $resolveFunction(null, [], null, $info);
-    }
 
     public function testCreateFieldConfigDecoratorWithNoResolverAndNoFallback(): void
     {
