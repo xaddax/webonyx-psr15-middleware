@@ -26,7 +26,11 @@ class SchemaMergerTest extends TestCase
         }
     }
 
-    private function assertStringContainsIgnoringWhitespace(string $needle, string $haystack, string $message = ''): void
+    private function assertStringContainsIgnoringWhitespace(
+        string $needle,
+        string $haystack,
+        string $message = ''
+    ): void
     {
         $normalize = fn($s) => preg_replace('/\s+/', '', $s);
         $this->assertStringContainsString($normalize($needle), $normalize($haystack), $message);
