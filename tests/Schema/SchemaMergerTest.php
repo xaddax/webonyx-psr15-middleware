@@ -30,8 +30,7 @@ class SchemaMergerTest extends TestCase
         string $needle,
         string $haystack,
         string $message = ''
-    ): void
-    {
+    ): void {
         $normalize = fn($s) => preg_replace('/\s+/', '', $s);
         $this->assertStringContainsString($normalize($needle), $normalize($haystack), $message);
     }
