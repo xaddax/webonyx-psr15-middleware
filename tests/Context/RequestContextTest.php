@@ -36,7 +36,7 @@ class RequestContextTest extends TestCase
                 'SERVER_NAME' => 'example.com'
             ]
         );
-        
+
         // Add query params and cookies
         $this->request = $this->request
             ->withQueryParams(['debug' => '1', 'version' => '2'])
@@ -51,7 +51,7 @@ class RequestContextTest extends TestCase
         $operationType = 'query';
 
         $result = ($this->context)($params, $doc, $operationType);
-        
+
         $this->assertSame($this->context, $result);
     }
 
@@ -59,7 +59,7 @@ class RequestContextTest extends TestCase
     {
         $this->context->setRequest($this->request);
         $retrievedRequest = $this->context->getRequest();
-        
+
         $this->assertSame($this->request, $retrievedRequest);
     }
 
@@ -67,14 +67,14 @@ class RequestContextTest extends TestCase
     {
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Request not set on GraphQL context');
-        
+
         $this->context->getRequest();
     }
 
     public function testGetToken(): void
     {
         $this->context->setRequest($this->request);
-        
+
         $token = $this->context->getToken();
         $this->assertEquals('Bearer token123', $token);
     }
@@ -83,7 +83,7 @@ class RequestContextTest extends TestCase
     {
         $requestWithoutAuth = new ServerRequest('POST', 'https://example.com/graphql');
         $this->context->setRequest($requestWithoutAuth);
-        
+
         $token = $this->context->getToken();
         $this->assertNull($token);
     }
@@ -91,12 +91,12 @@ class RequestContextTest extends TestCase
     public function testGetTokenReturnsNullWhenHeaderEmpty(): void
     {
         $requestWithEmptyAuth = new ServerRequest(
-            'POST', 
+            'POST',
             'https://example.com/graphql',
             ['Authorization' => '']
         );
         $this->context->setRequest($requestWithEmptyAuth);
-        
+
         $token = $this->context->getToken();
         $this->assertNull($token);
     }
@@ -104,7 +104,7 @@ class RequestContextTest extends TestCase
     public function testGetClientId(): void
     {
         $this->context->setRequest($this->request);
-        
+
         $clientId = $this->context->getClientId();
         $this->assertEquals('client456', $clientId);
     }
@@ -113,7 +113,7 @@ class RequestContextTest extends TestCase
     {
         $requestWithoutClientId = new ServerRequest('POST', 'https://example.com/graphql');
         $this->context->setRequest($requestWithoutClientId);
-        
+
         $clientId = $this->context->getClientId();
         $this->assertNull($clientId);
     }
@@ -121,12 +121,12 @@ class RequestContextTest extends TestCase
     public function testGetClientIdReturnsNullWhenHeaderEmpty(): void
     {
         $requestWithEmptyClientId = new ServerRequest(
-            'POST', 
+            'POST',
             'https://example.com/graphql',
             ['X-CLIENT-ID' => '']
         );
         $this->context->setRequest($requestWithEmptyClientId);
-        
+
         $clientId = $this->context->getClientId();
         $this->assertNull($clientId);
     }
@@ -134,7 +134,7 @@ class RequestContextTest extends TestCase
     public function testGetUserAgent(): void
     {
         $this->context->setRequest($this->request);
-        
+
         $userAgent = $this->context->getUserAgent();
         $this->assertEquals('TestAgent/1.0', $userAgent);
     }
@@ -143,7 +143,7 @@ class RequestContextTest extends TestCase
     {
         $requestWithoutUserAgent = new ServerRequest('POST', 'https://example.com/graphql');
         $this->context->setRequest($requestWithoutUserAgent);
-        
+
         $userAgent = $this->context->getUserAgent();
         $this->assertNull($userAgent);
     }
@@ -151,12 +151,12 @@ class RequestContextTest extends TestCase
     public function testGetUserAgentReturnsNullWhenHeaderEmpty(): void
     {
         $requestWithEmptyUserAgent = new ServerRequest(
-            'POST', 
+            'POST',
             'https://example.com/graphql',
             ['User-Agent' => '']
         );
         $this->context->setRequest($requestWithEmptyUserAgent);
-        
+
         $userAgent = $this->context->getUserAgent();
         $this->assertNull($userAgent);
     }
@@ -164,7 +164,7 @@ class RequestContextTest extends TestCase
     public function testGetMethod(): void
     {
         $this->context->setRequest($this->request);
-        
+
         $method = $this->context->getMethod();
         $this->assertEquals('POST', $method);
     }
@@ -183,7 +183,7 @@ class RequestContextTest extends TestCase
     public function testGetQueryParams(): void
     {
         $this->context->setRequest($this->request);
-        
+
         $queryParams = $this->context->getQueryParams();
         $this->assertEquals(['debug' => '1', 'version' => '2'], $queryParams);
     }
@@ -192,7 +192,7 @@ class RequestContextTest extends TestCase
     {
         $requestWithoutQuery = new ServerRequest('POST', 'https://example.com/graphql');
         $this->context->setRequest($requestWithoutQuery);
-        
+
         $queryParams = $this->context->getQueryParams();
         $this->assertEquals([], $queryParams);
     }
@@ -200,7 +200,7 @@ class RequestContextTest extends TestCase
     public function testGetParsedBody(): void
     {
         $this->context->setRequest($this->request);
-        
+
         $parsedBody = $this->context->getParsedBody();
         $this->assertEquals(['query' => '{ hello }', 'variables' => []], $parsedBody);
     }
@@ -209,7 +209,7 @@ class RequestContextTest extends TestCase
     {
         $requestWithoutBody = new ServerRequest('POST', 'https://example.com/graphql');
         $this->context->setRequest($requestWithoutBody);
-        
+
         $parsedBody = $this->context->getParsedBody();
         $this->assertNull($parsedBody);
     }
@@ -217,7 +217,7 @@ class RequestContextTest extends TestCase
     public function testGetCookieParams(): void
     {
         $this->context->setRequest($this->request);
-        
+
         $cookieParams = $this->context->getCookieParams();
         $this->assertEquals(['session' => 'abc123', 'preferences' => 'dark'], $cookieParams);
     }
@@ -226,7 +226,7 @@ class RequestContextTest extends TestCase
     {
         $requestWithoutCookies = new ServerRequest('POST', 'https://example.com/graphql');
         $this->context->setRequest($requestWithoutCookies);
-        
+
         $cookieParams = $this->context->getCookieParams();
         $this->assertEquals([], $cookieParams);
     }
@@ -234,7 +234,7 @@ class RequestContextTest extends TestCase
     public function testGetServerParams(): void
     {
         $this->context->setRequest($this->request);
-        
+
         $serverParams = $this->context->getServerParams();
         $this->assertArrayHasKey('HTTP_HOST', $serverParams);
         $this->assertArrayHasKey('REQUEST_METHOD', $serverParams);
