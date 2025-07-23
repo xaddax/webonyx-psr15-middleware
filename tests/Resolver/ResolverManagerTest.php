@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace GraphQL\Middleware\Tests\Resolver;
 
+use GraphQL\Language\AST\FieldDefinitionNode;
+use GraphQL\Language\AST\ObjectTypeDefinitionNode;
 use GraphQL\Language\AST\TypeDefinitionNode;
 use GraphQL\Middleware\Contract\ResolverInterface;
 use GraphQL\Middleware\Factory\ResolverFactory;
 use GraphQL\Middleware\Resolver\ResolverManager;
+use GraphQL\Type\Definition\ObjectType;
 use GraphQL\Type\Definition\ResolveInfo;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -144,5 +147,255 @@ class ResolverManagerTest extends TestCase
 
         $result = $decorator($config, $typeDefinitionNode);
         $this->assertSame($config, $result);
+    }
+
+    public function testCreateTypeConfigDecoratorWithNonCallableResolver(): void
+    {
+        $decorator = $this->manager->createTypeConfigDecorator();
+        $typeDefinitionNode = $this->createMock(TypeDefinitionNode::class);
+        $info = $this->createMock(ResolveInfo::class);
+        $info->fieldName = 'getUser';
+
+        // Return a non-callable value
+        $this->resolverFactory->expects($this->any())
+            ->method('createResolver')
+            ->with('GetUser')
+            ->willReturn('not-callable');
+
+        $config = [
+            'name' => 'Query',
+            'fields' => [
+                'getUser' => [
+                    'type' => 'User'
+                ]
+            ]
+        ];
+
+        $result = $decorator($config, $typeDefinitionNode);
+        $resolveField = $result['resolveField'];
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Resolver for GetUser is not callable');
+
+        $resolveField(null, [], null, $info);
+    }
+
+    public function testCreateTypeConfigDecoratorWithNoResolverAndNoFallback(): void
+    {
+        $decorator = $this->manager->createTypeConfigDecorator();
+        $typeDefinitionNode = $this->createMock(TypeDefinitionNode::class);
+        $info = $this->createMock(ResolveInfo::class);
+        $info->fieldName = 'getUser';
+
+        $this->resolverFactory->expects($this->any())
+            ->method('createResolver')
+            ->with('GetUser')
+            ->willReturn(null);
+
+        $config = [
+            'name' => 'Query',
+            'fields' => [
+                'getUser' => [
+                    'type' => 'User'
+                ]
+            ]
+        ];
+
+        $result = $decorator($config, $typeDefinitionNode);
+        $resolveField = $result['resolveField'];
+        $resolvedValue = $resolveField(null, [], null, $info);
+
+        $this->assertNull($resolvedValue);
+    }
+
+    public function testFormatOperationNameWithSnakeCase(): void
+    {
+        $decorator = $this->manager->createTypeConfigDecorator();
+        $typeDefinitionNode = $this->createMock(TypeDefinitionNode::class);
+
+        $config = [
+            'name' => 'Query',
+            'fields' => []
+        ];
+
+        $info = $this->createMock(ResolveInfo::class);
+        $info->fieldName = 'get_user_profile';
+
+        $this->resolverFactory->expects($this->once())
+            ->method('createResolver')
+            ->with('GetUserProfile')
+            ->willReturn($this->resolver);
+
+        $result = $decorator($config, $typeDefinitionNode);
+        $resolveField = $result['resolveField'];
+        $resolvedValue = $resolveField(null, [], null, $info);
+
+        $this->assertEquals(['id' => '1'], $resolvedValue);
+    }
+
+    public function testFormatOperationNameWithCamelCase(): void
+    {
+        $decorator = $this->manager->createTypeConfigDecorator();
+        $typeDefinitionNode = $this->createMock(TypeDefinitionNode::class);
+
+        $config = [
+            'name' => 'Query',
+            'fields' => []
+        ];
+
+        $info = $this->createMock(ResolveInfo::class);
+        $info->fieldName = 'getUserProfile';
+
+        $this->resolverFactory->expects($this->once())
+            ->method('createResolver')
+            ->with('GetUserProfile')
+            ->willReturn($this->resolver);
+
+        $result = $decorator($config, $typeDefinitionNode);
+        $resolveField = $result['resolveField'];
+        $resolvedValue = $resolveField(null, [], null, $info);
+
+        $this->assertEquals(['id' => '1'], $resolvedValue);
+    }
+
+    public function testFormatOperationNameWithPascalCase(): void
+    {
+        $decorator = $this->manager->createTypeConfigDecorator();
+        $typeDefinitionNode = $this->createMock(TypeDefinitionNode::class);
+
+        $config = [
+            'name' => 'Query',
+            'fields' => []
+        ];
+
+        $info = $this->createMock(ResolveInfo::class);
+        $info->fieldName = 'GetUserProfile';
+
+        $this->resolverFactory->expects($this->once())
+            ->method('createResolver')
+            ->with('GetUserProfile')
+            ->willReturn($this->resolver);
+
+        $result = $decorator($config, $typeDefinitionNode);
+        $resolveField = $result['resolveField'];
+        $resolvedValue = $resolveField(null, [], null, $info);
+
+        $this->assertEquals(['id' => '1'], $resolvedValue);
+    }
+
+    public function testCreateFieldConfigDecorator(): void
+    {
+        $decorator = $this->manager->createFieldConfigDecorator();
+        $fieldDefinitionNode = $this->createMock(FieldDefinitionNode::class);
+        $objectTypeDefinitionNode = $this->createMock(ObjectTypeDefinitionNode::class);
+
+        $info = $this->createMock(ResolveInfo::class);
+        $info->fieldName = 'posts';
+
+        $parentType = $this->createMock(ObjectType::class);
+        $parentType->name = 'User';
+        $info->parentType = $parentType;
+
+        $this->resolverFactory->expects($this->once())
+            ->method('createResolver')
+            ->with($info)
+            ->willReturn($this->resolver);
+
+        $fieldConfig = [
+            'type' => 'Post',
+            'description' => 'User posts'
+        ];
+
+        $result = $decorator($fieldConfig, $fieldDefinitionNode, $objectTypeDefinitionNode);
+        $this->assertArrayHasKey('resolve', $result);
+
+        $resolveFunction = $result['resolve'];
+        $resolvedValue = $resolveFunction(null, [], null, $info);
+        $this->assertEquals(['id' => '1'], $resolvedValue);
+    }
+
+    public function testCreateFieldConfigDecoratorWithFallbackResolver(): void
+    {
+        $fallbackResolver = function ($source, $args, $context, $info) {
+            return ['id' => '3'];
+        };
+
+        $manager = new ResolverManager($this->resolverFactory, $fallbackResolver);
+        $decorator = $manager->createFieldConfigDecorator();
+        $fieldDefinitionNode = $this->createMock(FieldDefinitionNode::class);
+        $objectTypeDefinitionNode = $this->createMock(ObjectTypeDefinitionNode::class);
+
+        $info = $this->createMock(ResolveInfo::class);
+        $info->fieldName = 'posts';
+
+        $this->resolverFactory->expects($this->once())
+            ->method('createResolver')
+            ->with($info)
+            ->willReturn(null);
+
+        $fieldConfig = [
+            'type' => 'Post',
+            'description' => 'User posts'
+        ];
+
+        $result = $decorator($fieldConfig, $fieldDefinitionNode, $objectTypeDefinitionNode);
+        $resolveFunction = $result['resolve'];
+        $resolvedValue = $resolveFunction(null, [], null, $info);
+        $this->assertEquals(['id' => '3'], $resolvedValue);
+    }
+
+    public function testCreateFieldConfigDecoratorWithNonCallableResolver(): void
+    {
+        $decorator = $this->manager->createFieldConfigDecorator();
+        $fieldDefinitionNode = $this->createMock(FieldDefinitionNode::class);
+        $objectTypeDefinitionNode = $this->createMock(ObjectTypeDefinitionNode::class);
+
+        $info = $this->createMock(ResolveInfo::class);
+        $info->fieldName = 'posts';
+
+        // Return a non-callable value
+        $this->resolverFactory->expects($this->once())
+            ->method('createResolver')
+            ->with($info)
+            ->willReturn('not-callable');
+
+        $fieldConfig = [
+            'type' => 'Post',
+            'description' => 'User posts'
+        ];
+
+        $result = $decorator($fieldConfig, $fieldDefinitionNode, $objectTypeDefinitionNode);
+        $resolveFunction = $result['resolve'];
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Resolver for posts is not callable');
+
+        $resolveFunction(null, [], null, $info);
+    }
+
+    public function testCreateFieldConfigDecoratorWithNoResolverAndNoFallback(): void
+    {
+        $decorator = $this->manager->createFieldConfigDecorator();
+        $fieldDefinitionNode = $this->createMock(FieldDefinitionNode::class);
+        $objectTypeDefinitionNode = $this->createMock(ObjectTypeDefinitionNode::class);
+
+        $info = $this->createMock(ResolveInfo::class);
+        $info->fieldName = 'posts';
+
+        $this->resolverFactory->expects($this->once())
+            ->method('createResolver')
+            ->with($info)
+            ->willReturn(null);
+
+        $fieldConfig = [
+            'type' => 'Post',
+            'description' => 'User posts'
+        ];
+
+        $result = $decorator($fieldConfig, $fieldDefinitionNode, $objectTypeDefinitionNode);
+        $resolveFunction = $result['resolve'];
+        $resolvedValue = $resolveFunction(null, [], null, $info);
+
+        $this->assertNull($resolvedValue);
     }
 }
